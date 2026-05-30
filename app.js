@@ -7,6 +7,12 @@ const weapons = {
   rifle: { name: "Rifle", damage: 4, range: 6 }
 };
 
+const bioWeapons = {
+  pistol: { name: "Mordida", damage: 3, range: 1 },
+  shotgun: { name: "Garra brutal", damage: 5, range: 1 },
+  rifle: { name: "Ataque acido", damage: 4, range: 4 }
+};
+
 const coverTiles = new Set(["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]);
 
 const factions = {
@@ -51,6 +57,16 @@ const factions = {
       ["h4", "Umber", 2, 7, 10, 5],
       ["h5", "Night Howl", 3, 2, 9, 5]
     ]
+  },
+  umbrella: {
+    name: "Umbrella",
+    mission: "Prueba de campo: brote controlado",
+    special: "Liberar mutageno",
+    specialDamage: 5,
+    specialRange: 4,
+    economy: true,
+    budget: 1000000,
+    units: []
   }
 };
 
@@ -60,6 +76,31 @@ const enemyRoster = [
   ["e3", "Ganado", 10, 5, 8, 3],
   ["e4", "Perro infectado", 8, 7, 6, 4],
   ["e5", "Licker", 11, 7, 12, 3]
+];
+
+const responseRoster = [
+  ["e1", "Chris", 10, 1, 12, 4],
+  ["e2", "Jill", 9, 3, 10, 5],
+  ["e3", "Leon", 10, 5, 10, 4],
+  ["e4", "Claire", 8, 7, 9, 4],
+  ["e5", "Agente BSAA", 11, 7, 9, 4]
+];
+
+const bowShop = [
+  { id: "zombie", name: "Zombie", cost: 90000, hp: 7, move: 3, count: 3 },
+  { id: "cerberus", name: "Cerberus", cost: 160000, hp: 6, move: 5, count: 1 },
+  { id: "licker", name: "Licker", cost: 260000, hp: 12, move: 4, count: 1 },
+  { id: "tyrant", name: "Tyrant T-Proto", cost: 420000, hp: 18, move: 2, count: 1 }
+];
+
+const playerSpawn = [
+  [1, 1],
+  [1, 3],
+  [1, 5],
+  [2, 7],
+  [3, 2],
+  [2, 4],
+  [3, 6]
 ];
 
 let state;
@@ -77,6 +118,10 @@ const resultTitle = document.querySelector("#resultTitle");
 const resultText = document.querySelector("#resultText");
 const startScreen = document.querySelector("#startScreen");
 const startBtn = document.querySelector("#startBtn");
+const bowBuilder = document.querySelector("#bowBuilder");
+const bowShopEl = document.querySelector("#bowShop");
+const bowRosterEl = document.querySelector("#bowRoster");
+const budgetLabel = document.querySelector("#budgetLabel");
 
 const actionButtons = {
   move: document.querySelector("#moveBtn"),
@@ -87,10 +132,20 @@ const actionButtons = {
 };
 
 let selectedFaction = "bsaa";
+let selectedBows = defaultBowRoster();
+let bowBudget = getRemainingBudget(selectedBows);
 
 function newGame(factionId = selectedFaction) {
   selectedFaction = factions[factionId] ? factionId : "bsaa";
   const faction = factions[selectedFaction];
+  const playerUnits = faction.economy ? buildUmbrellaUnits() : faction.units.map(([id, name, x, y, hp, move]) => {
+    return unit(id, name, "hero", x, y, hp, move, "hero");
+  });
+  const opponents = faction.economy ? responseRoster.map(([id, name, x, y, hp, move]) => {
+    return unit(id, name, "enemy", x, y, hp, move, "hero");
+  }) : enemyRoster.map(([id, name, x, y, hp, move]) => {
+    return unit(id, name, "enemy", x, y, hp, move, "infected");
+  });
 
   state = {
     round: 1,
@@ -101,10 +156,7 @@ function newGame(factionId = selectedFaction) {
     factionId: selectedFaction,
     specialUsed: false,
     log: [],
-    units: [
-      ...faction.units.map(([id, name, x, y, hp, move]) => unit(id, name, "hero", x, y, hp, move)),
-      ...enemyRoster.map(([id, name, x, y, hp, move]) => unit(id, name, "enemy", x, y, hp, move))
-    ]
+    units: [...playerUnits, ...opponents]
   };
 
   addLog(`${faction.name} desplegado. Objetivo: contener el brote.`);
@@ -113,8 +165,21 @@ function newGame(factionId = selectedFaction) {
   render();
 }
 
-function unit(id, name, side, x, y, hp, move) {
-  return { id, name, side, x, y, hp, maxHp: hp, move, acted: false };
+function buildUmbrellaUnits() {
+  const roster = selectedBows.length > 0 ? selectedBows : defaultBowRoster();
+  return roster.slice(0, playerSpawn.length).map((bowId, index) => {
+    const bow = bowShop.find((item) => item.id === bowId);
+    const [x, y] = playerSpawn[index];
+    return unit(`h${index + 1}`, bow.name, "hero", x, y, bow.hp, bow.move, "bio");
+  });
+}
+
+function defaultBowRoster() {
+  return ["zombie", "zombie", "zombie", "cerberus", "licker"];
+}
+
+function unit(id, name, side, x, y, hp, move, role = "hero") {
+  return { id, name, side, x, y, hp, maxHp: hp, move, role, acted: false };
 }
 
 function render() {
@@ -169,8 +234,8 @@ function renderCoverProp() {
 
 function renderUnitToken(unitData) {
   const token = document.createElement("div");
-  token.className = `unit ${unitData.side} ${unitData.name.length > 8 ? "unit-small-label" : ""}`;
-  token.textContent = unitData.side === "hero" ? unitData.name[0] : "!";
+  token.className = `unit ${unitData.side} ${unitData.role} ${unitData.name.length > 8 ? "unit-small-label" : ""}`;
+  token.textContent = unitData.side === "hero" || unitData.role === "hero" ? unitData.name[0] : "!";
 
   const hp = document.createElement("span");
   hp.className = "hp";
@@ -184,11 +249,12 @@ function renderPanel() {
   const heroes = state.units.filter((unitData) => unitData.side === "hero" && unitData.hp > 0);
   const selected = getSelectedUnit();
   const faction = factions[state.factionId];
+  const currentWeapons = getWeaponSet();
   unitPanel.innerHTML = "";
   selectedUnitStats.innerHTML = selected
     ? `
       <strong>${selected.name}</strong>
-      <span>${selected.acted ? "Ya actuo este turno" : "Lista para actuar"} · ${weapons[state.selectedWeapon].name}</span>
+      <span>${selected.acted ? "Ya actuo este turno" : "Lista para actuar"} · ${currentWeapons[state.selectedWeapon].name}</span>
       <div class="stat-row">
         <span class="stat-pill">Vida ${selected.hp}/${selected.maxHp}</span>
         <span class="stat-pill">Mov ${selected.move}</span>
@@ -206,7 +272,7 @@ function renderPanel() {
       <strong>${hero.name}</strong>
       <span>${hero.acted ? "Sin accion" : "Listo"}</span>
       <span>Vida ${hero.hp}/${hero.maxHp}</span>
-      <span>${weapons[state.selectedWeapon].name}</span>
+      <span>${currentWeapons[state.selectedWeapon].name}</span>
     `;
     card.addEventListener("click", () => {
       if (state.side !== "hero") return;
@@ -275,7 +341,7 @@ function moveSelectedUnit(selected, x, y) {
 function attackTarget(attacker, target) {
   if (!target || target.side !== "enemy") return;
 
-  const weapon = weapons[state.selectedWeapon];
+  const weapon = getWeaponSet()[state.selectedWeapon];
   if (distance(attacker, target) > weapon.range) return;
 
   target.hp -= weapon.damage;
@@ -410,7 +476,7 @@ function getHighlights(selected) {
   const highlights = new Set();
   const faction = factions[state.factionId];
   const range = state.mode === "attack"
-    ? weapons[state.selectedWeapon].range
+    ? getWeaponSet()[state.selectedWeapon].range
     : state.mode === "special"
       ? faction.specialRange
       : selected.move;
@@ -422,6 +488,79 @@ function getHighlights(selected) {
   }
 
   return highlights;
+}
+
+function getWeaponSet() {
+  return state && factions[state.factionId]?.economy ? bioWeapons : weapons;
+}
+
+function updateWeaponCards() {
+  const currentWeapons = selectedFaction === "umbrella" ? bioWeapons : weapons;
+  document.querySelectorAll(".weapon-card").forEach((button) => {
+    const weapon = currentWeapons[button.dataset.weapon];
+    button.querySelector("span").textContent = weapon.name;
+    button.querySelector("strong").textContent = `${weapon.damage} dano / ${weapon.range} casillas`;
+  });
+}
+
+function renderBowBuilder() {
+  const isUmbrella = selectedFaction === "umbrella";
+  bowBuilder.classList.toggle("is-hidden", !isUmbrella);
+  updateWeaponCards();
+  if (!isUmbrella) return;
+
+  budgetLabel.textContent = formatMoney(bowBudget);
+  bowShopEl.innerHTML = "";
+  bowShop.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "shop-card";
+    button.disabled = bowBudget < item.cost || selectedBows.length >= playerSpawn.length;
+    button.innerHTML = `
+      <strong>${item.name}</strong>
+      <span>${formatMoney(item.cost)} · Vida ${item.hp} · Mov ${item.move}</span>
+    `;
+    button.addEventListener("click", () => buyBow(item.id));
+    bowShopEl.appendChild(button);
+  });
+
+  bowRosterEl.innerHTML = "";
+  const roster = selectedBows.length > 0 ? selectedBows : defaultBowRoster();
+  roster.forEach((bowId, index) => {
+    const item = bowShop.find((bow) => bow.id === bowId);
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "roster-chip";
+    chip.innerHTML = `<strong>${index + 1}. ${item.name}</strong><span>Click para quitar</span>`;
+    chip.addEventListener("click", () => removeBow(index));
+    bowRosterEl.appendChild(chip);
+  });
+}
+
+function buyBow(bowId) {
+  const item = bowShop.find((bow) => bow.id === bowId);
+  if (!item || bowBudget < item.cost || selectedBows.length >= playerSpawn.length) return;
+  selectedBows.push(bowId);
+  bowBudget -= item.cost;
+  renderBowBuilder();
+}
+
+function removeBow(index) {
+  const [removed] = selectedBows.splice(index, 1);
+  if (!removed) return;
+  const item = bowShop.find((bow) => bow.id === removed);
+  bowBudget += item.cost;
+  renderBowBuilder();
+}
+
+function getRemainingBudget(roster) {
+  return factions.umbrella.budget - roster.reduce((sum, id) => {
+    return sum + bowShop.find((bow) => bow.id === id).cost;
+  }, 0);
+}
+
+function formatMoney(value) {
+  return `$${value.toLocaleString("es-AR")}`;
 }
 
 function getSelectedUnit() {
@@ -487,12 +626,9 @@ document.querySelector("#restartBtn").addEventListener("click", () => newGame(st
 
 document.querySelectorAll(".faction-card").forEach((button) => {
   button.addEventListener("click", () => {
-    if (!factions[button.dataset.faction]) {
-      addStartSelection(button);
-      return;
-    }
     selectedFaction = button.dataset.faction;
     addStartSelection(button);
+    renderBowBuilder();
   });
 });
 
@@ -506,3 +642,4 @@ startBtn.addEventListener("click", () => newGame(selectedFaction));
 
 newGame("bsaa");
 startScreen.classList.remove("is-hidden");
+renderBowBuilder();

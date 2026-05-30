@@ -14,10 +14,11 @@ Abrir `index.html` en el navegador.
 - Usar `Especial` una vez por mision para golpear varios infectados cercanos.
 - Cambiar armas desde el panel lateral.
 - Usar `Esperar` o `Terminar turno` para pasar accion.
+- Elegir `Umbrella` en la pantalla inicial para comprar B.O.W.s con presupuesto antes de iniciar.
 
 ## Proximos pasos sugeridos
 
-- Crear campana de corporaciones con dinero y compra de criaturas.
 - Sumar habilidades especiales por unidad, no solo por faccion.
 - Agregar misiones con recompensas y desbloqueos.
+- Crear progresion de campana con dinero persistente y compradores.
 - Reemplazar assets por arte propio si se comparte publicamente como fan game.
