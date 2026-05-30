@@ -2,6 +2,25 @@ extends Control
 
 const DATA_PATH := "res://data/game_data.json"
 const SAVE_PATH := "user://campaign_save.json"
+const TILE_W := 76.0
+const TILE_H := 40.0
+const BOARD_W := 12
+const BOARD_H := 9
+const ISO_ORIGIN := Vector2(430, 64)
+const COLORS := {
+	"bg": Color("#101415"),
+	"panel": Color("#171d1f"),
+	"panel_2": Color("#202729"),
+	"line": Color("#344044"),
+	"text": Color("#eef3ef"),
+	"muted": Color("#aeb9b2"),
+	"hero": Color("#74c7ec"),
+	"enemy": Color("#ff7d5b"),
+	"accent": Color("#bfd66f"),
+	"tile": Color("#2b3938"),
+	"tile_alt": Color("#263230"),
+	"cover": Color("#48533c")
+}
 
 var data := {}
 var campaign := {}
@@ -19,6 +38,8 @@ var battle_over := false
 @onready var title_screen: Control = %TitleScreen
 @onready var start_screen: Control = %StartScreen
 @onready var battle_screen: Control = %BattleScreen
+@onready var battle_area: Panel = get_node("BattleScreen/BattleArea")
+@onready var side_panel: VBoxContainer = get_node("BattleScreen/Side")
 @onready var faction_list: VBoxContainer = %FactionList
 @onready var mission_list: VBoxContainer = %MissionList
 @onready var campaign_stats: Label = %CampaignStats
@@ -30,6 +51,7 @@ var battle_over := false
 @onready var sfx: AudioStreamPlayer = %Sfx
 
 func _ready() -> void:
+	apply_visual_theme()
 	data = load_json(DATA_PATH)
 	campaign = load_json(SAVE_PATH)
 	if campaign.is_empty():
@@ -40,6 +62,48 @@ func _ready() -> void:
 	render_factions()
 	render_missions()
 	show_title()
+
+func apply_visual_theme() -> void:
+	add_theme_color_override("font_color", COLORS.text)
+	var root_style := make_panel_style(COLORS.bg, COLORS.line, 0)
+	add_theme_stylebox_override("panel", root_style)
+	title_screen.add_theme_constant_override("separation", 18)
+	start_screen.add_theme_constant_override("separation", 18)
+	battle_screen.add_theme_constant_override("separation", 18)
+	battle_area.add_theme_stylebox_override("panel", make_panel_style(Color(0.06, 0.08, 0.08, 0.96), Color(1, 1, 1, 0.08), 0))
+	side_panel.custom_minimum_size = Vector2(340, 0)
+	log_label.add_theme_stylebox_override("normal", make_panel_style(Color(0.04, 0.05, 0.05, 0.86), COLORS.line, 6))
+	log_label.add_theme_color_override("default_color", COLORS.muted)
+	style_tree(self)
+
+func style_tree(node: Node) -> void:
+	if node is Label:
+		node.add_theme_color_override("font_color", COLORS.text)
+	if node is Button:
+		style_button(node)
+	if node is Panel:
+		node.add_theme_stylebox_override("panel", make_panel_style(COLORS.panel, Color(1, 1, 1, 0.08), 0))
+	for child in node.get_children():
+		style_tree(child)
+
+func style_button(button: Button, primary := false) -> void:
+	button.add_theme_stylebox_override("normal", make_panel_style(COLORS.accent if primary else COLORS.panel_2, COLORS.line, 6))
+	button.add_theme_stylebox_override("hover", make_panel_style((COLORS.accent if primary else COLORS.panel_2).lightened(0.1), COLORS.accent, 6))
+	button.add_theme_stylebox_override("pressed", make_panel_style((COLORS.accent if primary else COLORS.panel_2).darkened(0.12), COLORS.accent, 6))
+	button.add_theme_color_override("font_color", Color("#172022") if primary else COLORS.text)
+	button.custom_minimum_size = Vector2(0, 40)
+
+func make_panel_style(color: Color, border: Color, radius: int) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.border_color = border
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(radius)
+	style.content_margin_left = 10
+	style.content_margin_right = 10
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	return style
 
 func load_json(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
@@ -93,6 +157,7 @@ func render_factions() -> void:
 	for faction_id in data.factions.keys():
 		var button := Button.new()
 		button.text = data.factions[faction_id].name
+		style_button(button, faction_id == selected_faction)
 		button.pressed.connect(func():
 			selected_faction = faction_id
 			render_missions()
@@ -115,9 +180,11 @@ func render_missions() -> void:
 		var button := Button.new()
 		button.text = "%s. %s" % [i + 1, mission.name]
 		button.disabled = i > progress.unlockedMission
+		style_button(button, i == selected_mission)
 		button.pressed.connect(func(index := i):
 			selected_mission = index
 			mission_title.text = data.missions[selected_mission].briefing
+			render_missions()
 			play_sfx("res://assets/audio/ui.wav")
 		)
 		mission_list.add_child(button)
@@ -131,31 +198,154 @@ func get_progress(faction_id: String) -> Dictionary:
 func render_battle() -> void:
 	for child in battle_grid.get_children():
 		child.queue_free()
-	for y in range(9):
-		for x in range(12):
-			var tile := Button.new()
-			tile.modulate = get_tile_color(x, y)
-			tile.size = Vector2(44, 24)
-			tile.custom_minimum_size = Vector2(44, 24)
-			tile.position = iso_pos(x, y)
-			tile.text = ""
-			tile.pressed.connect(func(tx := x, ty := y):
-				handle_tile(tx, ty)
-			)
-			battle_grid.add_child(tile)
+	draw_scene_backdrop()
+	for y in range(BOARD_H):
+		for x in range(BOARD_W):
+			draw_tile(x, y)
 	for index in range(units.size()):
 		var unit = units[index]
-		var sprite := Sprite2D.new()
-		sprite.texture = load("res://assets/sprites/%s" % unit.sprite)
-		sprite.position = iso_pos(unit.x, unit.y) + Vector2(22, -26)
-		sprite.scale = Vector2(0.85, 0.85)
-		if index == selected_unit:
-			sprite.modulate = Color(1.3, 1.3, 0.75, 1.0)
-		battle_grid.add_child(sprite)
+		draw_unit(unit, index)
 	render_unit_panel()
 
 func iso_pos(x: int, y: int) -> Vector2:
-	return Vector2((x - y) * 38 + 420, (x + y) * 20 + 80)
+	return Vector2((x - y) * (TILE_W / 2.0), (x + y) * (TILE_H / 2.0)) + ISO_ORIGIN
+
+func draw_scene_backdrop() -> void:
+	var backdrop := Polygon2D.new()
+	backdrop.polygon = PackedVector2Array([
+		Vector2(92, 34), Vector2(762, 10), Vector2(910, 312), Vector2(690, 548), Vector2(116, 506), Vector2(0, 220)
+	])
+	backdrop.color = Color(0.055, 0.075, 0.075, 0.96)
+	backdrop.z_index = -30
+	battle_grid.add_child(backdrop)
+	for i in range(9):
+		var line := Line2D.new()
+		line.points = PackedVector2Array([Vector2(88 + i * 78, 58), Vector2(18 + i * 78, 500)])
+		line.width = 1.0
+		line.default_color = Color(1, 1, 1, 0.035)
+		line.z_index = -29
+		battle_grid.add_child(line)
+	for i in range(7):
+		var line := Line2D.new()
+		line.points = PackedVector2Array([Vector2(28, 88 + i * 70), Vector2(872, 42 + i * 70)])
+		line.width = 1.0
+		line.default_color = Color(1, 1, 1, 0.03)
+		line.z_index = -29
+		battle_grid.add_child(line)
+
+func draw_tile(x: int, y: int) -> void:
+	var holder := Node2D.new()
+	holder.position = iso_pos(x, y)
+	holder.z_index = y * 10 + x
+	battle_grid.add_child(holder)
+	var shadow := Polygon2D.new()
+	shadow.position = Vector2(0, 9)
+	shadow.polygon = diamond_points(TILE_W, TILE_H)
+	shadow.color = Color(0, 0, 0, 0.28)
+	holder.add_child(shadow)
+	var body := Polygon2D.new()
+	body.polygon = diamond_points(TILE_W, TILE_H)
+	body.color = get_tile_color(x, y)
+	holder.add_child(body)
+	var highlight := Line2D.new()
+	highlight.points = PackedVector2Array([Vector2(0, -TILE_H / 2.0), Vector2(TILE_W / 2.0, 0), Vector2(0, TILE_H / 2.0), Vector2(-TILE_W / 2.0, 0), Vector2(0, -TILE_H / 2.0)])
+	highlight.width = 1.4
+	highlight.default_color = Color(1, 1, 1, 0.12)
+	holder.add_child(highlight)
+	if cover_tiles.has("%s,%s" % [x, y]):
+		draw_cover_prop(holder)
+	var hitbox := Button.new()
+	hitbox.flat = true
+	hitbox.text = ""
+	hitbox.modulate = Color(1, 1, 1, 0.01)
+	hitbox.size = Vector2(TILE_W, TILE_H)
+	hitbox.position = Vector2(-TILE_W / 2.0, -TILE_H / 2.0)
+	hitbox.pressed.connect(func(tx := x, ty := y):
+		handle_tile(tx, ty)
+	)
+	holder.add_child(hitbox)
+
+func diamond_points(width: float, height: float) -> PackedVector2Array:
+	return PackedVector2Array([Vector2(0, -height / 2.0), Vector2(width / 2.0, 0), Vector2(0, height / 2.0), Vector2(-width / 2.0, 0)])
+
+func draw_cover_prop(holder: Node2D) -> void:
+	var prop := Polygon2D.new()
+	prop.position = Vector2(0, -18)
+	prop.polygon = PackedVector2Array([Vector2(-20, 4), Vector2(0, -22), Vector2(22, 4), Vector2(14, 23), Vector2(-16, 21)])
+	prop.color = Color("#566142")
+	prop.z_index = 5
+	holder.add_child(prop)
+	var rim := Line2D.new()
+	rim.position = prop.position
+	rim.points = PackedVector2Array([Vector2(-20, 4), Vector2(0, -22), Vector2(22, 4), Vector2(14, 23), Vector2(-16, 21), Vector2(-20, 4)])
+	rim.width = 2
+	rim.default_color = Color(1, 1, 1, 0.18)
+	rim.z_index = 6
+	holder.add_child(rim)
+
+func draw_unit(unit: Dictionary, index: int) -> void:
+	var holder := Node2D.new()
+	holder.position = iso_pos(unit.x, unit.y) + Vector2(0, -24)
+	holder.z_index = 500 + unit.y * 10 + unit.x
+	battle_grid.add_child(holder)
+	var shadow := Polygon2D.new()
+	shadow.position = Vector2(0, 28)
+	shadow.scale = Vector2(1.1, 0.28)
+	shadow.polygon = diamond_points(54, 28)
+	shadow.color = Color(0, 0, 0, 0.34)
+	holder.add_child(shadow)
+	var accent: Color = COLORS.hero if unit.side == "hero" else COLORS.enemy
+	var body := Polygon2D.new()
+	body.polygon = unit_body_points(unit)
+	body.color = accent.darkened(0.18) if unit.side == "hero" else Color("#7d3028")
+	holder.add_child(body)
+	var vest := Polygon2D.new()
+	vest.position = Vector2(0, 6)
+	vest.polygon = PackedVector2Array([Vector2(-15, -14), Vector2(15, -14), Vector2(19, 16), Vector2(0, 28), Vector2(-19, 16)])
+	vest.color = accent
+	holder.add_child(vest)
+	var head := Polygon2D.new()
+	head.position = Vector2(0, -25)
+	head.polygon = PackedVector2Array([Vector2(-11, -8), Vector2(8, -11), Vector2(14, 3), Vector2(6, 15), Vector2(-10, 12), Vector2(-15, 0)])
+	head.color = Color("#d8c5a0") if unit.side == "hero" else Color("#9ab05d")
+	holder.add_child(head)
+	var weapon := Line2D.new()
+	weapon.points = PackedVector2Array([Vector2(12, -2), Vector2(36, -12)])
+	weapon.width = 4
+	weapon.default_color = Color("#d9d6c0") if unit.side == "hero" else Color("#3a1c18")
+	holder.add_child(weapon)
+	var hp_bg := ColorRect.new()
+	hp_bg.position = Vector2(-22, 36)
+	hp_bg.size = Vector2(44, 5)
+	hp_bg.color = Color(0, 0, 0, 0.55)
+	holder.add_child(hp_bg)
+	var hp_bar := ColorRect.new()
+	hp_bar.position = hp_bg.position
+	hp_bar.size = Vector2(44.0 * clamp(float(unit.hp) / float(unit.max_hp), 0.0, 1.0), 5)
+	hp_bar.color = accent
+	holder.add_child(hp_bar)
+	var name_label := Label.new()
+	name_label.text = unit.name
+	name_label.position = Vector2(-36, 43)
+	name_label.size = Vector2(72, 18)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 10)
+	name_label.add_theme_color_override("font_color", COLORS.text)
+	holder.add_child(name_label)
+	if index == selected_unit:
+		var selection := Line2D.new()
+		selection.points = PackedVector2Array([Vector2(0, -54), Vector2(34, -28), Vector2(24, 18), Vector2(-24, 18), Vector2(-34, -28), Vector2(0, -54)])
+		selection.width = 3
+		selection.default_color = COLORS.accent
+		selection.z_index = -1
+		holder.add_child(selection)
+
+func unit_body_points(unit: Dictionary) -> PackedVector2Array:
+	if unit.sprite == "cerberus.svg" or unit.sprite == "licker.svg":
+		return PackedVector2Array([Vector2(-28, 4), Vector2(-8, -20), Vector2(28, -12), Vector2(32, 10), Vector2(12, 24), Vector2(-24, 20)])
+	if unit.sprite == "tyrant.svg":
+		return PackedVector2Array([Vector2(-24, -18), Vector2(0, -36), Vector2(28, -18), Vector2(24, 24), Vector2(0, 40), Vector2(-24, 24)])
+	return PackedVector2Array([Vector2(-18, -18), Vector2(0, -30), Vector2(18, -18), Vector2(22, 18), Vector2(0, 34), Vector2(-22, 18)])
 
 func render_unit_panel() -> void:
 	for child in unit_panel.get_children():
@@ -166,6 +356,7 @@ func render_unit_panel() -> void:
 	var move_button := Button.new()
 	move_button.text = "Mover"
 	move_button.disabled = battle_over
+	style_button(move_button, current_mode == "move")
 	move_button.pressed.connect(func():
 		current_mode = "move"
 		render_battle()
@@ -175,6 +366,7 @@ func render_unit_panel() -> void:
 	var attack_button := Button.new()
 	attack_button.text = "Atacar"
 	attack_button.disabled = battle_over
+	style_button(attack_button, current_mode == "attack")
 	attack_button.pressed.connect(func():
 		current_mode = "attack"
 		render_battle()
@@ -184,11 +376,13 @@ func render_unit_panel() -> void:
 	var wait_button := Button.new()
 	wait_button.text = "Esperar"
 	wait_button.disabled = battle_over
+	style_button(wait_button)
 	wait_button.pressed.connect(wait_selected_unit)
 	unit_panel.add_child(wait_button)
 	var end_button := Button.new()
 	end_button.text = "Terminar turno"
 	end_button.disabled = battle_over
+	style_button(end_button, true)
 	end_button.pressed.connect(start_enemy_turn)
 	unit_panel.add_child(end_button)
 	for i in range(units.size()):
@@ -202,6 +396,7 @@ func render_unit_panel() -> void:
 			" | listo" if not acted_units.has(unit.id) else " | sin accion"
 		]
 		button.disabled = battle_over or unit.side != "hero" or turn_side != "hero"
+		style_button(button, i == selected_unit)
 		button.pressed.connect(func(index := i):
 			selected_unit = index
 			render_battle()
