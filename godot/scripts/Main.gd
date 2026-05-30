@@ -7,6 +7,15 @@ const TILE_H := 40.0
 const BOARD_W := 12
 const BOARD_H := 9
 const ISO_ORIGIN := Vector2(430, 64)
+const UNIT_SCALES := {
+	"chris.png": 0.62,
+	"jill.png": 0.62,
+	"leon.png": 0.62,
+	"zombie.png": 0.62,
+	"cerberus.png": 0.66,
+	"licker.png": 0.58,
+	"tyrant.png": 0.68
+}
 const COLORS := {
 	"bg": Color("#101415"),
 	"panel": Color("#171d1f"),
@@ -303,8 +312,9 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 	var accent: Color = COLORS.hero if unit.side == "hero" else COLORS.enemy
 	var unit_sprite := Sprite2D.new()
 	unit_sprite.texture = load("res://assets/painted/units/%s" % unit.art)
-	unit_sprite.position = Vector2(0, -14)
-	unit_sprite.scale = Vector2(0.78, 0.78)
+	unit_sprite.position = Vector2(0, -18)
+	var sprite_scale = UNIT_SCALES.get(unit.art, 0.62)
+	unit_sprite.scale = Vector2(sprite_scale, sprite_scale)
 	holder.add_child(unit_sprite)
 	var hp_bg := ColorRect.new()
 	hp_bg.position = Vector2(-22, 36)

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zona Cero Tactica - Godot</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1010;
+        --panel: #151d1e;
+        --line: #344044;
+        --text: #eef3ef;
+        --muted: #aeb9b2;
+        --accent: #bfd66f;
+        --danger: #ff6a4d;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 28px;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(191, 214, 111, .14), transparent 22rem),
+          radial-gradient(circle at 80% 68%, rgba(255, 106, 77, .12), transparent 20rem),
+          linear-gradient(135deg, #070a0a, #172022 58%, #0c1010);
+        color: var(--text);
+        font-family: Arial, Helvetica, sans-serif;
+      }
+      main {
+        width: min(880px, 100%);
+        border: 1px solid rgba(255,255,255,.1);
+        background: rgba(21, 29, 30, .9);
+        box-shadow: 0 30px 100px rgba(0,0,0,.45);
+        padding: clamp(22px, 4vw, 42px);
+      }
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(34px, 7vw, 72px);
+        line-height: .95;
+      }
+      p {
+        max-width: 720px;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.5;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin: 24px 0;
+      }
+      a {
+        min-height: 44px;
+        display: inline-grid;
+        place-items: center;
+        padding: 0 16px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        color: var(--text);
+        text-decoration: none;
+        background: #202729;
+      }
+      a.primary {
+        border-color: transparent;
+        background: var(--accent);
+        color: #172022;
+        font-weight: 800;
+      }
+      ol {
+        margin: 18px 0 0;
+        padding-left: 22px;
+        color: var(--text);
+        line-height: 1.6;
+      }
+      code {
+        color: var(--accent);
+      }
+      .note {
+        margin-top: 20px;
+        padding: 12px;
+        border-left: 3px solid var(--danger);
+        background: rgba(255, 106, 77, .08);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">Fan prototype no comercial</p>
+      <h1>Zona Cero Tactica</h1>
+      <p>El proyecto ahora vive en Godot. Esta pagina existe para que el link de GitHub no quede en blanco, pero la version jugable todavia se abre desde el motor.</p>
+      <div class="actions">
+        <a class="primary" href="https://github.com/milton2112/resident-evil-fan-tactics/archive/refs/heads/main.zip">Descargar proyecto</a>
+        <a href="https://github.com/milton2112/resident-evil-fan-tactics">Ver repositorio</a>
+      </div>
+      <ol>
+        <li>Descargar el ZIP o clonar el repo.</li>
+        <li>Abrir Godot 4.6 o superior.</li>
+        <li>Importar <code>godot/project.godot</code>.</li>
+        <li>Presionar <code>F5</code> para jugar.</li>
+      </ol>
+      <p class="note">Para jugar directo desde el navegador falta una exportacion Web de Godot. Ese es otro paso distinto a subir el codigo a GitHub Pages.</p>
+    </main>
+  </body>
+</html>
