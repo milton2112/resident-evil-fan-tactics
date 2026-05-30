@@ -201,6 +201,28 @@ h2 {
   color: var(--text);
 }
 
+.audio-controls {
+  display: grid;
+  gap: 6px;
+  min-width: 130px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.audio-controls label {
+  display: grid;
+  gap: 4px;
+}
+
+.icon-btn {
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
 .battlefield-wrap {
   display: flex;
   align-items: center;
@@ -403,17 +425,13 @@ h2 {
   transform: translateX(-50%);
   box-shadow: 0 15px 16px rgba(0, 0, 0, 0.4);
   animation: idleBob 1800ms ease-in-out infinite;
+  background-size: contain;
+  background-position: center bottom;
+  background-repeat: no-repeat;
 }
 
 .unit::before {
-  content: "";
-  position: absolute;
-  top: -15px;
-  width: 23px;
-  height: 23px;
-  border: 2px solid rgba(255, 255, 255, 0.7);
-  border-radius: 50%;
-  background: inherit;
+  content: none;
 }
 
 .unit::after {
@@ -430,17 +448,24 @@ h2 {
 }
 
 .unit.hero {
-  background: linear-gradient(#a4e2fb, var(--hero));
+  background-image: url("assets/sprites/soldier.svg");
+  border-color: rgba(116, 199, 236, 0.9);
 }
 
 .unit.bio {
-  background: linear-gradient(#d9f28c, #7da84c);
+  background-image: url("assets/sprites/zombie.svg");
+  border-color: rgba(191, 214, 111, 0.9);
   border-radius: 18px 18px 7px 7px;
 }
 
 .unit.enemy {
-  background: linear-gradient(#ffad82, var(--enemy));
+  background-image: url("assets/sprites/zombie.svg");
+  border-color: rgba(255, 125, 91, 0.9);
   border-radius: 18px 18px 8px 8px;
+}
+
+.unit.scout {
+  background-image: url("assets/sprites/agent.svg");
 }
 
 .unit.scout {
@@ -452,6 +477,7 @@ h2 {
   width: 44px;
   height: 54px;
   border-width: 3px;
+  background-image: url("assets/sprites/tyrant.svg");
 }
 
 .unit.beast,
@@ -459,6 +485,11 @@ h2 {
   width: 44px;
   height: 34px;
   border-radius: 20px 20px 10px 10px;
+  background-image: url("assets/sprites/cerberus.svg");
+}
+
+.unit.beast.enemy {
+  background-image: url("assets/sprites/licker.svg");
 }
 
 .unit.hit {
@@ -626,9 +657,26 @@ h2 {
 
 .weapon-card {
   display: grid;
-  gap: 4px;
+  grid-template-columns: 34px 1fr;
+  gap: 4px 8px;
   padding: 10px;
   text-align: left;
+}
+
+.weapon-card::before {
+  content: "";
+  grid-row: span 2;
+  width: 32px;
+  height: 32px;
+  background: center / contain no-repeat url("assets/icons/pistol.svg");
+}
+
+.weapon-card[data-weapon="shotgun"]::before {
+  background-image: url("assets/icons/shotgun.svg");
+}
+
+.weapon-card[data-weapon="rifle"]::before {
+  background-image: url("assets/icons/rifle.svg");
 }
 
 .weapon-card strong {
@@ -839,7 +887,9 @@ h2 {
 }
 
 .mission-picker,
-.upgrade-shop {
+.upgrade-shop,
+.campaign-map,
+.map-editor {
   display: grid;
   grid-template-columns: 210px minmax(0, 1fr);
   gap: 12px;
@@ -851,13 +901,16 @@ h2 {
 }
 
 .mission-picker h3,
-.upgrade-shop h3 {
+.upgrade-shop h3,
+.campaign-map h3,
+.map-editor h3 {
   margin: 0 0 8px;
   font-size: 14px;
 }
 
 .mission-picker p,
-.upgrade-shop p {
+.upgrade-shop p,
+.map-editor p {
   margin: 0;
   color: var(--muted);
   line-height: 1.4;
@@ -903,6 +956,68 @@ h2 {
   border-color: rgba(116, 199, 236, 0.55);
   background: rgba(116, 199, 236, 0.08);
 }
+
+.campaign-nodes {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.campaign-node {
+  position: relative;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.campaign-node.is-unlocked {
+  border-color: rgba(191, 214, 111, 0.55);
+}
+
+.campaign-node.is-cleared {
+  background: rgba(116, 199, 236, 0.08);
+}
+
+.editor-tools,
+.editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tool-btn {
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.tool-btn.is-selected {
+  border-color: var(--accent);
+}
+
+.editor-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(12, 18px);
+  gap: 3px;
+}
+
+.editor-cell {
+  width: 18px;
+  height: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  background: rgba(255,255,255,.04);
+  cursor: pointer;
+}
+
+.editor-cell.cover { background: #566142; }
+.editor-cell.hero { background: var(--hero); }
+.editor-cell.enemy { background: var(--enemy); }
 
 .modal.is-hidden {
   display: none;
@@ -1052,6 +1167,8 @@ h2 {
 
   .mission-picker,
   .upgrade-shop,
+  .campaign-map,
+  .map-editor,
   .objective-stats,
   .campaign-summary {
     grid-template-columns: 1fr;

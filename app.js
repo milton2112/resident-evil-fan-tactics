@@ -23,6 +23,20 @@ const upgrades = [
   { id: "squadSlot", name: "Ranura extra", cost: 360000, research: 5, text: "Permite desplegar una unidad extra" }
 ];
 
+const audioFiles = {
+  music: "assets/audio/music-ambient.wav",
+  ui: "assets/audio/ui.wav",
+  step: "assets/audio/step.wav",
+  shot: "assets/audio/shot.wav",
+  bite: "assets/audio/bite.wav",
+  special: "assets/audio/special.wav",
+  turn: "assets/audio/turn.wav",
+  victory: "assets/audio/victory.wav",
+  defeat: "assets/audio/defeat.wav",
+  death: "assets/audio/defeat.wav",
+  upgrade: "assets/audio/ui.wav"
+};
+
 const factions = {
   bsaa: {
     name: "BSAA",
@@ -209,6 +223,12 @@ const campaignSummary = document.querySelector("#campaignSummary");
 const missionBrief = document.querySelector("#missionBrief");
 const missionList = document.querySelector("#missionList");
 const upgradeList = document.querySelector("#upgradeList");
+const campaignMap = document.querySelector("#campaignMap");
+const editorGrid = document.querySelector("#editorGrid");
+const saveMapBtn = document.querySelector("#saveMapBtn");
+const loadMapBtn = document.querySelector("#loadMapBtn");
+const muteBtn = document.querySelector("#muteBtn");
+const volumeSlider = document.querySelector("#volumeSlider");
 const resetProgressBtn = document.querySelector("#resetProgressBtn");
 const menuBtn = document.querySelector("#menuBtn");
 const nextMissionBtn = document.querySelector("#nextMissionBtn");
@@ -228,6 +248,11 @@ let bowBudget = getRemainingBudget(selectedBows);
 let campaign = loadCampaign();
 let audioContext;
 let visualEffects = { movedId: null, attackerId: null, hitIds: [], specialKey: null };
+let audioMuted = localStorage.getItem("reFanTacticsMuted") === "true";
+let audioVolume = Number(localStorage.getItem("reFanTacticsVolume") || 55) / 100;
+let musicAudio;
+let editorTool = "cover";
+let editorMap = loadEditorMap();
 
 function newGame(factionId = selectedFaction) {
   unlockAudio();
@@ -693,6 +718,8 @@ function getHighlights(selected) {
 }
 
 function getCurrentCover() {
+  const saved = localStorage.getItem("reFanTacticsUseEditorMap") === "true" ? loadEditorMap() : null;
+  if (saved && saved.cover.length > 0) return new Set(saved.cover);
   return new Set((missions[state?.missionIndex || selectedMissionIndex]?.map?.cover || Array.from(coverTiles)));
 }
 
@@ -846,8 +873,29 @@ function renderStartScreen() {
     missionList.appendChild(button);
   });
   missionBrief.textContent = missions[selectedMissionIndex].briefing;
+  renderCampaignMap(progress);
   renderUpgradeShop(progress);
+  renderEditorGrid();
   renderBowBuilder();
+}
+
+function renderCampaignMap(progress) {
+  campaignMap.innerHTML = "";
+  missions.forEach((mission, index) => {
+    const node = document.createElement("button");
+    node.type = "button";
+    node.className = "campaign-node";
+    node.classList.toggle("is-unlocked", index <= progress.unlockedMission);
+    node.classList.toggle("is-cleared", Boolean(progress.bestRounds[mission.id]));
+    node.disabled = index > progress.unlockedMission;
+    node.innerHTML = `<strong>${index + 1}. ${mission.name}</strong><br><span>${progress.bestRounds[mission.id] ? "Completada" : index <= progress.unlockedMission ? "Disponible" : "Bloqueada"}</span>`;
+    node.addEventListener("click", () => {
+      if (node.disabled) return;
+      selectedMissionIndex = index;
+      renderStartScreen();
+    });
+    campaignMap.appendChild(node);
+  });
 }
 
 function renderUpgradeShop(progress) {
@@ -876,41 +924,70 @@ function showStartScreen() {
   renderStartScreen();
 }
 
-function unlockAudio() {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+function loadEditorMap() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("reFanTacticsEditorMap") || "null");
+    return saved || { cover: [], hero: [], enemy: [] };
+  } catch {
+    return { cover: [], hero: [], enemy: [] };
   }
-  if (audioContext.state === "suspended") audioContext.resume();
+}
+
+function saveEditorMap() {
+  localStorage.setItem("reFanTacticsEditorMap", JSON.stringify(editorMap));
+  localStorage.setItem("reFanTacticsUseEditorMap", "true");
+  playSound("upgrade");
+  renderStartScreen();
+}
+
+function renderEditorGrid() {
+  editorGrid.innerHTML = "";
+  for (let y = 0; y < HEIGHT; y += 1) {
+    for (let x = 0; x < WIDTH; x += 1) {
+      const key = `${x},${y}`;
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = "editor-cell";
+      if (editorMap.cover.includes(key)) cell.classList.add("cover");
+      if (editorMap.hero.includes(key)) cell.classList.add("hero");
+      if (editorMap.enemy.includes(key)) cell.classList.add("enemy");
+      cell.addEventListener("click", () => editCell(key));
+      editorGrid.appendChild(cell);
+    }
+  }
+}
+
+function editCell(key) {
+  ["cover", "hero", "enemy"].forEach((bucket) => {
+    editorMap[bucket] = editorMap[bucket].filter((item) => item !== key);
+  });
+  if (editorTool !== "erase") editorMap[editorTool].push(key);
+  playSound("ui");
+  renderEditorGrid();
+}
+
+function unlockAudio() {
+  if (!musicAudio) {
+    musicAudio = new Audio(audioFiles.music);
+    musicAudio.loop = true;
+  }
+  updateAudioControls();
+  musicAudio.play().catch(() => {});
 }
 
 function playSound(type) {
-  if (!audioContext) return;
-  const now = audioContext.currentTime;
-  const gain = audioContext.createGain();
-  gain.connect(audioContext.destination);
-  gain.gain.setValueAtTime(0.0001, now);
+  if (audioMuted || !audioFiles[type]) return;
+  const sound = new Audio(audioFiles[type]);
+  sound.volume = Math.min(1, audioVolume * 0.75);
+  sound.play().catch(() => {});
+}
 
-  const osc = audioContext.createOscillator();
-  osc.connect(gain);
-  const config = {
-    ui: [520, 0.05, "triangle", 0.05],
-    step: [120, 0.07, "sine", 0.04],
-    shot: [920, 0.08, "square", 0.06],
-    bite: [180, 0.12, "sawtooth", 0.05],
-    special: [260, 0.22, "sawtooth", 0.08],
-    turn: [420, 0.12, "triangle", 0.04],
-    death: [90, 0.22, "sine", 0.06],
-    upgrade: [760, 0.18, "triangle", 0.06],
-    victory: [660, 0.28, "triangle", 0.08],
-    defeat: [110, 0.36, "sawtooth", 0.06]
-  }[type] || [440, 0.1, "sine", 0.04];
-
-  osc.frequency.setValueAtTime(config[0], now);
-  osc.type = config[2];
-  gain.gain.linearRampToValueAtTime(config[3], now + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, now + config[1]);
-  osc.start(now);
-  osc.stop(now + config[1] + 0.02);
+function updateAudioControls() {
+  if (musicAudio) {
+    musicAudio.volume = audioMuted ? 0 : audioVolume * 0.38;
+  }
+  muteBtn.textContent = audioMuted ? "Mute" : "Audio";
+  volumeSlider.value = String(Math.round(audioVolume * 100));
 }
 
 function pulseTurn() {
@@ -1014,6 +1091,31 @@ closeTutorialBtn.addEventListener("click", () => {
   playSound("ui");
   tutorialModal.classList.add("is-hidden");
 });
+muteBtn.addEventListener("click", () => {
+  audioMuted = !audioMuted;
+  localStorage.setItem("reFanTacticsMuted", String(audioMuted));
+  updateAudioControls();
+});
+volumeSlider.addEventListener("input", () => {
+  audioVolume = Number(volumeSlider.value) / 100;
+  localStorage.setItem("reFanTacticsVolume", String(Math.round(audioVolume * 100)));
+  updateAudioControls();
+});
+document.querySelectorAll(".tool-btn").forEach((button) => {
+  button.addEventListener("click", () => {
+    editorTool = button.dataset.tool;
+    document.querySelectorAll(".tool-btn").forEach((toolButton) => {
+      toolButton.classList.toggle("is-selected", toolButton === button);
+    });
+    playSound("ui");
+  });
+});
+saveMapBtn.addEventListener("click", saveEditorMap);
+loadMapBtn.addEventListener("click", () => {
+  localStorage.setItem("reFanTacticsUseEditorMap", "true");
+  playSound("ui");
+  renderStartScreen();
+});
 
 document.querySelectorAll(".faction-card").forEach((button) => {
   button.addEventListener("click", () => {
@@ -1037,4 +1139,5 @@ startBtn.addEventListener("click", () => newGame(selectedFaction));
 newGame("bsaa");
 startScreen.classList.remove("is-hidden");
 titleScreen.classList.remove("is-hidden");
+updateAudioControls();
 renderStartScreen();

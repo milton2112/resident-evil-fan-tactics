@@ -18,6 +18,12 @@
 - Mapas con coberturas distintas por mision.
 - IA con prioridad por vida/rango y busqueda de flanqueo simple.
 - Tienda de mejoras de campana.
+- Audio real en archivos `.wav`, musica ambiente, volumen y mute.
+- Sprites SVG propios para unidades, armas y tiles.
+- Mapa de campana con nodos conectados.
+- Editor rapido de mapas con cobertura y spawns guardados localmente.
+- Documentacion para GitHub Pages.
+- Guia de migracion a Godot/Unity.
 - Modal de victoria/derrota con reintento, menu y siguiente mision.
 - Objetivos y progreso visibles durante la partida.
 - Proyecto subido a GitHub.

@@ -37,6 +37,13 @@
             <strong id="turnLabel">Turno de heroes</strong>
             <span id="campaignLabel">Campaña sin guardar</span>
           </div>
+          <div class="audio-controls" aria-label="Audio">
+            <button id="muteBtn" class="icon-btn" type="button">Audio</button>
+            <label>
+              Vol
+              <input id="volumeSlider" type="range" min="0" max="100" value="55">
+            </label>
+          </div>
         </header>
 
         <section class="battlefield-wrap">
@@ -130,12 +137,33 @@
           </div>
           <div id="missionList" class="mission-list"></div>
         </section>
+        <section class="campaign-map" aria-label="Mapa de campana">
+          <h3>Ruta de campaña</h3>
+          <div id="campaignMap" class="campaign-nodes"></div>
+        </section>
         <section class="upgrade-shop" aria-label="Mejoras de campana">
           <div>
             <h3>Mejoras</h3>
             <p>Gasta creditos e investigacion ganados en campaña.</p>
           </div>
           <div id="upgradeList" class="upgrade-list"></div>
+        </section>
+        <section class="map-editor" aria-label="Editor de mapa">
+          <div>
+            <h3>Editor rapido</h3>
+            <p>Elige una herramienta y toca el tablero mini para guardar un mapa local.</p>
+          </div>
+          <div class="editor-tools">
+            <button class="tool-btn is-selected" type="button" data-tool="cover">Cobertura</button>
+            <button class="tool-btn" type="button" data-tool="hero">Spawn jugador</button>
+            <button class="tool-btn" type="button" data-tool="enemy">Spawn enemigo</button>
+            <button class="tool-btn" type="button" data-tool="erase">Borrar</button>
+          </div>
+          <div id="editorGrid" class="editor-grid"></div>
+          <div class="editor-actions">
+            <button id="saveMapBtn" class="action-btn" type="button">Guardar mapa</button>
+            <button id="loadMapBtn" class="action-btn" type="button">Usar mapa guardado</button>
+          </div>
         </section>
         <div class="start-actions">
           <button id="resetProgressBtn" class="action-btn" type="button">Reiniciar progreso</button>

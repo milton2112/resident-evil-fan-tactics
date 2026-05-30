@@ -6,6 +6,14 @@ Primer prototipo jugable fan inspirado en Resident Evil: tactico por turnos, vis
 
 Abrir `index.html` en el navegador.
 
+Repo:
+
+https://github.com/milton2112/resident-evil-fan-tactics
+
+GitHub Pages, cuando este activo:
+
+https://milton2112.github.io/resident-evil-fan-tactics/
+
 ## Controles
 
 - Seleccionar un soldado del tablero o del panel.
@@ -20,6 +28,9 @@ Abrir `index.html` en el navegador.
 - Comprar mejoras de campana con creditos e investigacion.
 - Ver tutorial de 3 pasos desde la pantalla de titulo.
 - Escuchar sonidos generados por el navegador para disparos, mordidas, UI y victoria/derrota.
+- Usar controles de volumen/mute.
+- Editar un mapa local rapido desde el menu.
+- Revisar `docs/GITHUB_PAGES.md` y `docs/MOTOR_MIGRATION.md`.
 
 ## Proximos pasos sugeridos
 
