@@ -10,6 +10,14 @@
 - Progreso local por faccion.
 - Recompensas de credito e investigacion.
 - Guardado en el navegador.
+- Pantalla de titulo.
+- Tutorial de 3 pasos.
+- Sprites propios por CSS para humanos, infectados y B.O.W.s.
+- Sonido sintetico para UI, disparos, mordidas, turnos, victoria y derrota.
+- Animaciones de movimiento, golpe, ataque, especial y cambio de turno.
+- Mapas con coberturas distintas por mision.
+- IA con prioridad por vida/rango y busqueda de flanqueo simple.
+- Tienda de mejoras de campana.
 - Modal de victoria/derrota con reintento, menu y siguiente mision.
 - Objetivos y progreso visibles durante la partida.
 - Proyecto subido a GitHub.

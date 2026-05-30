@@ -7,6 +7,23 @@
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
+    <section id="titleScreen" class="title-screen" aria-labelledby="gameTitle">
+      <div class="title-art">
+        <div class="biohazard-mark" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+      <div class="title-copy">
+        <p class="eyebrow">Fan prototype no comercial</p>
+        <h1 id="gameTitle">Resident Evil: Biohazard Tactics</h1>
+        <p>Combate tactico 2.5D por turnos, facciones jugables, B.O.W.s, mejoras y campana ligera.</p>
+        <div class="title-actions">
+          <button id="continueBtn" class="action-btn action-btn-primary" type="button">Continuar</button>
+          <button id="tutorialBtn" class="action-btn" type="button">Tutorial</button>
+        </div>
+      </div>
+    </section>
+
     <main class="shell">
       <section class="game-stage" aria-label="Campo de combate tactico">
         <header class="topbar">
@@ -113,6 +130,13 @@
           </div>
           <div id="missionList" class="mission-list"></div>
         </section>
+        <section class="upgrade-shop" aria-label="Mejoras de campana">
+          <div>
+            <h3>Mejoras</h3>
+            <p>Gasta creditos e investigacion ganados en campaña.</p>
+          </div>
+          <div id="upgradeList" class="upgrade-list"></div>
+        </section>
         <div class="start-actions">
           <button id="resetProgressBtn" class="action-btn" type="button">Reiniciar progreso</button>
           <button id="startBtn" class="action-btn action-btn-primary" type="button">Iniciar mision</button>
@@ -129,6 +153,18 @@
           <button id="restartBtn" class="action-btn" type="button">Reintentar</button>
           <button id="nextMissionBtn" class="action-btn action-btn-primary" type="button">Siguiente mision</button>
         </div>
+      </div>
+    </div>
+
+    <div id="tutorialModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="modal-card tutorial-card">
+        <h2 id="tutorialTitle">Tutorial rapido</h2>
+        <ol class="tutorial-steps">
+          <li><strong>Selecciona.</strong> Toca una unidad del tablero o del panel derecho.</li>
+          <li><strong>Mueve.</strong> Usa las casillas azules para tomar posicion o acercarte a un objetivo.</li>
+          <li><strong>Ataca.</strong> Cambia arma, usa Atacar o Especial y elige un enemigo en rango rojo.</li>
+        </ol>
+        <button id="closeTutorialBtn" class="action-btn action-btn-primary" type="button">Entendido</button>
       </div>
     </div>
 

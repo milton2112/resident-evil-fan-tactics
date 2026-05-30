@@ -17,10 +17,13 @@ Abrir `index.html` en el navegador.
 - Elegir `Umbrella` en la pantalla inicial para comprar B.O.W.s con presupuesto antes de iniciar.
 - Elegir misiones, ganar recompensas y desbloquear la siguiente zona.
 - El progreso queda guardado en el navegador con `localStorage`.
+- Comprar mejoras de campana con creditos e investigacion.
+- Ver tutorial de 3 pasos desde la pantalla de titulo.
+- Escuchar sonidos generados por el navegador para disparos, mordidas, UI y victoria/derrota.
 
 ## Proximos pasos sugeridos
 
 - Sumar habilidades especiales por unidad, no solo por faccion.
-- Crear pantalla de desbloqueos para gastar creditos e investigacion.
-- Agregar mas mapas con obstaculos y enemigos propios.
+- Reemplazar sprites CSS por pixel art o modelos 3D propios.
+- Agregar mas mapas, jefes y eventos de historia.
 - Reemplazar assets por arte propio si se comparte publicamente como fan game.

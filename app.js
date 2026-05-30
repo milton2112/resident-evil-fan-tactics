@@ -15,6 +15,14 @@ const bioWeapons = {
 
 const coverTiles = new Set(["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]);
 
+const upgrades = [
+  { id: "weaponDrill", name: "Entrenamiento de armas", cost: 220000, research: 2, text: "+1 dano con armas y ataques B.O.W." },
+  { id: "fieldMedic", name: "Botiquines de campo", cost: 180000, research: 2, text: "+2 vida inicial para unidades humanas" },
+  { id: "bowGrowth", name: "Cultivo acelerado", cost: 260000, research: 3, text: "+2 vida inicial para B.O.W.s" },
+  { id: "mobility", name: "Rutas tacticas", cost: 240000, research: 3, text: "+1 movimiento al escuadron inicial" },
+  { id: "squadSlot", name: "Ranura extra", cost: 360000, research: 5, text: "Permite desplegar una unidad extra" }
+];
+
 const factions = {
   bsaa: {
     name: "BSAA",
@@ -110,6 +118,10 @@ const missions = [
     briefing: "Contener el brote inicial y recuperar el punto de extraccion.",
     rewardCredits: 180000,
     rewardResearch: 2,
+    map: {
+      theme: "city",
+      cover: ["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]
+    },
     enemyRoster,
     responseRoster
   },
@@ -119,6 +131,10 @@ const missions = [
     briefing: "Entrar al puerto, cortar la ruta de infeccion y eliminar hostiles rapidos.",
     rewardCredits: 260000,
     rewardResearch: 3,
+    map: {
+      theme: "port",
+      cover: ["3,1", "4,2", "5,2", "7,3", "2,5", "8,6", "9,7", "6,7"]
+    },
     enemyRoster: [
       ["e1", "Zombie", 10, 1, 8, 3],
       ["e2", "Ganado", 8, 2, 9, 3],
@@ -140,6 +156,10 @@ const missions = [
     briefing: "Sobrevivir a una zona hostil y neutralizar al enemigo pesado.",
     rewardCredits: 380000,
     rewardResearch: 5,
+    map: {
+      theme: "village",
+      cover: ["5,1", "6,1", "2,2", "8,3", "4,4", "5,5", "3,6", "9,6", "7,7"]
+    },
     enemyRoster: [
       ["e1", "Ganado", 10, 1, 10, 3],
       ["e2", "Ganado", 9, 3, 10, 3],
@@ -160,6 +180,12 @@ const missions = [
 let state;
 
 const battlefield = document.querySelector("#battlefield");
+const gameStage = document.querySelector(".game-stage");
+const titleScreen = document.querySelector("#titleScreen");
+const continueBtn = document.querySelector("#continueBtn");
+const tutorialBtn = document.querySelector("#tutorialBtn");
+const tutorialModal = document.querySelector("#tutorialModal");
+const closeTutorialBtn = document.querySelector("#closeTutorialBtn");
 const roundLabel = document.querySelector("#roundLabel");
 const turnLabel = document.querySelector("#turnLabel");
 const missionLabel = document.querySelector("#missionLabel");
@@ -182,6 +208,7 @@ const campaignLabel = document.querySelector("#campaignLabel");
 const campaignSummary = document.querySelector("#campaignSummary");
 const missionBrief = document.querySelector("#missionBrief");
 const missionList = document.querySelector("#missionList");
+const upgradeList = document.querySelector("#upgradeList");
 const resetProgressBtn = document.querySelector("#resetProgressBtn");
 const menuBtn = document.querySelector("#menuBtn");
 const nextMissionBtn = document.querySelector("#nextMissionBtn");
@@ -199,18 +226,24 @@ let selectedMissionIndex = 0;
 let selectedBows = defaultBowRoster();
 let bowBudget = getRemainingBudget(selectedBows);
 let campaign = loadCampaign();
+let audioContext;
+let visualEffects = { movedId: null, attackerId: null, hitIds: [], specialKey: null };
 
 function newGame(factionId = selectedFaction) {
+  unlockAudio();
   selectedFaction = factions[factionId] ? factionId : "bsaa";
   const faction = factions[selectedFaction];
   const mission = missions[selectedMissionIndex] || missions[0];
-  const playerUnits = faction.economy ? buildUmbrellaUnits() : faction.units.map(([id, name, x, y, hp, move]) => {
-    return unit(id, name, "hero", x, y, hp, move, "hero");
+  const baseFactionUnits = hasUpgrade("squadSlot", selectedFaction)
+    ? [...faction.units, ["h6", "Refuerzo", 2, 4, 9, 4]]
+    : faction.units;
+  const playerUnits = faction.economy ? buildUmbrellaUnits() : baseFactionUnits.map(([id, name, x, y, hp, move]) => {
+    return unit(id, name, "hero", x, y, hp, move, getRoleForName(name, "hero"));
   });
   const opponents = faction.economy ? mission.responseRoster.map(([id, name, x, y, hp, move]) => {
-    return unit(id, name, "enemy", x, y, hp, move, "hero");
+    return unit(id, name, "enemy", x, y, hp, move, getRoleForName(name, "hero"));
   }) : mission.enemyRoster.map(([id, name, x, y, hp, move]) => {
-    return unit(id, name, "enemy", x, y, hp, move, "infected");
+    return unit(id, name, "enemy", x, y, hp, move, getRoleForName(name, "infected"));
   });
 
   state = {
@@ -223,23 +256,27 @@ function newGame(factionId = selectedFaction) {
     missionIndex: selectedMissionIndex,
     specialUsed: false,
     completed: false,
+    mapTheme: mission.map.theme,
     log: [],
     units: [...playerUnits, ...opponents]
   };
 
+  visualEffects = { movedId: null, attackerId: null, hitIds: [], specialKey: null };
   addLog(`${faction.name} desplegado en ${mission.name}.`);
   addLog(mission.briefing);
+  playSound("ui");
   resultModal.classList.add("is-hidden");
   startScreen.classList.add("is-hidden");
   render();
 }
 
 function buildUmbrellaUnits() {
+  const maxUnits = hasUpgrade("squadSlot") ? playerSpawn.length : 5;
   const roster = selectedBows.length > 0 ? selectedBows : defaultBowRoster();
-  return roster.slice(0, playerSpawn.length).map((bowId, index) => {
+  return roster.slice(0, maxUnits).map((bowId, index) => {
     const bow = bowShop.find((item) => item.id === bowId);
     const [x, y] = playerSpawn[index];
-    return unit(`h${index + 1}`, bow.name, "hero", x, y, bow.hp, bow.move, "bio");
+    return unit(`h${index + 1}`, bow.name, "hero", x, y, bow.hp, bow.move, getRoleForName(bow.name, "bio"));
   });
 }
 
@@ -248,7 +285,20 @@ function defaultBowRoster() {
 }
 
 function unit(id, name, side, x, y, hp, move, role = "hero") {
-  return { id, name, side, x, y, hp, maxHp: hp, move, role, acted: false };
+  const isHuman = role === "hero" || role === "scout" || role === "brute";
+  const isBio = role.startsWith("bio") || role === "infected" || role === "beast";
+  const bonusHp = (isHuman && hasUpgrade("fieldMedic") ? 2 : 0) + (isBio && hasUpgrade("bowGrowth") ? 2 : 0);
+  const bonusMove = hasUpgrade("mobility") ? 1 : 0;
+  return { id, name, side, x, y, hp: hp + bonusHp, maxHp: hp + bonusHp, move: move + bonusMove, role, acted: false };
+}
+
+function getRoleForName(name, fallback) {
+  const lowered = name.toLowerCase();
+  if (lowered.includes("tyrant") || lowered.includes("brute") || lowered.includes("capitan")) return fallback === "bio" ? "bio-brute" : "brute";
+  if (lowered.includes("perro") || lowered.includes("cerberus") || lowered.includes("colmillo")) return fallback === "bio" ? "bio-beast" : "beast";
+  if (lowered.includes("licker")) return fallback === "bio" ? "bio-beast" : "beast";
+  if (lowered.includes("tirador") || lowered.includes("jill") || lowered.includes("leon")) return "scout";
+  return fallback;
 }
 
 function render() {
@@ -270,6 +320,8 @@ function renderBoard() {
   battlefield.innerHTML = "";
   const selected = getSelectedUnit();
   const highlights = selected ? getHighlights(selected) : new Set();
+  const coverSet = getCurrentCover();
+  battlefield.dataset.theme = state.mapTheme;
 
   for (let y = 0; y < HEIGHT; y += 1) {
     for (let x = 0; x < WIDTH; x += 1) {
@@ -284,12 +336,14 @@ function renderBoard() {
 
       const key = `${x},${y}`;
       if ((x + y) % 2 === 1) tile.classList.add("tile-alt");
-      if (coverTiles.has(key)) tile.classList.add("cover");
+      if (coverSet.has(key)) tile.classList.add("cover");
       if (highlights.has(key)) tile.classList.add(state.mode === "attack" || state.mode === "special" ? "attackable" : "reachable");
       if (selected && selected.x === x && selected.y === y) tile.classList.add("selected");
+      if (visualEffects.movedId && unitAt(x, y)?.id === visualEffects.movedId) tile.classList.add("moved");
+      if (visualEffects.specialKey === key) tile.classList.add("special-burst");
 
       const occupying = unitAt(x, y);
-      if (coverTiles.has(key)) tile.appendChild(renderCoverProp());
+      if (coverSet.has(key)) tile.appendChild(renderCoverProp());
       if (occupying) tile.appendChild(renderUnitToken(occupying));
 
       tile.addEventListener("click", () => handleTileClick(x, y));
@@ -307,6 +361,8 @@ function renderCoverProp() {
 function renderUnitToken(unitData) {
   const token = document.createElement("div");
   token.className = `unit ${unitData.side} ${unitData.role} ${unitData.name.length > 8 ? "unit-small-label" : ""}`;
+  if (visualEffects.attackerId === unitData.id) token.classList.add("attack-flash");
+  if (visualEffects.hitIds.includes(unitData.id)) token.classList.add("hit");
   token.textContent = unitData.side === "hero" || unitData.role === "hero" ? unitData.name[0] : "!";
 
   const hp = document.createElement("span");
@@ -413,11 +469,13 @@ function handleTileClick(x, y) {
 
 function moveSelectedUnit(selected, x, y) {
   const key = `${x},${y}`;
-  if (!getHighlights(selected).has(key) || unitAt(x, y) || coverTiles.has(key)) return;
+  if (!getHighlights(selected).has(key) || unitAt(x, y) || getCurrentCover().has(key)) return;
 
   selected.x = x;
   selected.y = y;
   selected.acted = true;
+  visualEffects = { movedId: selected.id, attackerId: null, hitIds: [], specialKey: null };
+  playSound("step");
   addLog(`${selected.name} avanza a posicion tactica.`);
   afterHeroAction();
 }
@@ -428,12 +486,16 @@ function attackTarget(attacker, target) {
   const weapon = getWeaponSet()[state.selectedWeapon];
   if (distance(attacker, target) > weapon.range) return;
 
-  target.hp -= weapon.damage;
+  const damage = weapon.damage + (hasUpgrade("weaponDrill") ? 1 : 0);
+  target.hp -= damage;
   attacker.acted = true;
-  addLog(`${attacker.name} usa ${weapon.name}: ${weapon.damage} dano.`);
+  visualEffects = { movedId: null, attackerId: attacker.id, hitIds: [target.id], specialKey: null };
+  playSound(attacker.role.startsWith("bio") ? "bite" : "shot");
+  addLog(`${attacker.name} usa ${weapon.name}: ${damage} dano.`);
 
   if (target.hp <= 0) {
     addLog(`${target.name} neutralizado.`);
+    playSound("death");
     state.units = state.units.filter((unitData) => unitData.hp > 0);
   }
 
@@ -450,12 +512,15 @@ function useSpecial(attacker, target) {
     return unitData.side === "enemy" && distance(target, unitData) <= 1;
   });
 
+  const damage = faction.specialDamage + (hasUpgrade("weaponDrill") ? 1 : 0);
   affected.forEach((enemy) => {
-    enemy.hp -= faction.specialDamage;
+    enemy.hp -= damage;
   });
 
   state.specialUsed = true;
   attacker.acted = true;
+  visualEffects = { movedId: null, attackerId: attacker.id, hitIds: affected.map((enemy) => enemy.id), specialKey: `${target.x},${target.y}` };
+  playSound("special");
   addLog(`${attacker.name} usa ${faction.special}. ${affected.length} objetivo(s) afectados.`);
 
   const defeated = affected.filter((enemy) => enemy.hp <= 0);
@@ -482,6 +547,9 @@ function selectNextReadyHero() {
 
 function startEnemyTurn() {
   state.side = "enemy";
+  visualEffects = { movedId: null, attackerId: null, hitIds: [], specialKey: null };
+  pulseTurn();
+  playSound("turn");
   render();
   setTimeout(runEnemyTurn, 450);
 }
@@ -493,9 +561,13 @@ function runEnemyTurn() {
     const heroes = state.units.filter((unitData) => unitData.side === "hero" && unitData.hp > 0);
     if (heroes.length === 0) return;
 
-    const target = nearestUnit(enemy, heroes);
-    if (distance(enemy, target) <= 1) {
-      target.hp -= 2;
+    const target = chooseEnemyTarget(enemy, heroes);
+    const attackRange = enemy.role === "scout" ? 4 : 1;
+    if (distance(enemy, target) <= attackRange) {
+      const damage = enemy.role === "brute" ? 4 : enemy.role === "scout" ? 3 : 2;
+      target.hp -= damage;
+      visualEffects = { movedId: null, attackerId: enemy.id, hitIds: [target.id], specialKey: null };
+      playSound(enemy.role === "scout" || enemy.role === "hero" ? "shot" : "bite");
       addLog(`${enemy.name} hiere a ${target.name}.`);
       if (target.hp <= 0) addLog(`${target.name} cae en combate.`);
       state.units = state.units.filter((unitData) => unitData.hp > 0);
@@ -508,6 +580,9 @@ function runEnemyTurn() {
 
   state.side = "hero";
   state.round += 1;
+  visualEffects = { movedId: null, attackerId: null, hitIds: [], specialKey: null };
+  pulseTurn();
+  playSound("turn");
   state.units.forEach((unitData) => {
     unitData.acted = false;
   });
@@ -519,17 +594,42 @@ function stepToward(unitData, target) {
   const candidates = [
     { x: unitData.x + Math.sign(target.x - unitData.x), y: unitData.y },
     { x: unitData.x, y: unitData.y + Math.sign(target.y - unitData.y) },
-    { x: unitData.x + Math.sign(target.x - unitData.x), y: unitData.y + Math.sign(target.y - unitData.y) }
+    { x: unitData.x + Math.sign(target.x - unitData.x), y: unitData.y + Math.sign(target.y - unitData.y) },
+    { x: unitData.x + 1, y: unitData.y },
+    { x: unitData.x - 1, y: unitData.y },
+    { x: unitData.x, y: unitData.y + 1 },
+    { x: unitData.x, y: unitData.y - 1 }
   ];
 
-  const next = candidates.find((tile) => {
-    return inBounds(tile.x, tile.y) && !unitAt(tile.x, tile.y) && !coverTiles.has(`${tile.x},${tile.y}`);
-  });
+  const coverSet = getCurrentCover();
+  const next = candidates
+    .filter((tile) => inBounds(tile.x, tile.y) && !unitAt(tile.x, tile.y) && !coverSet.has(`${tile.x},${tile.y}`))
+    .sort((a, b) => {
+      const aScore = distance(a, target) - flankBonus(a, target);
+      const bScore = distance(b, target) - flankBonus(b, target);
+      return aScore - bScore;
+    })[0];
 
   if (next) {
     unitData.x = next.x;
     unitData.y = next.y;
+    visualEffects = { movedId: unitData.id, attackerId: null, hitIds: [], specialKey: null };
   }
+}
+
+function chooseEnemyTarget(enemy, heroes) {
+  return heroes.slice().sort((a, b) => {
+    const aScore = a.hp * 1.4 + distance(enemy, a) * 1.8 - (a.acted ? 0 : 1);
+    const bScore = b.hp * 1.4 + distance(enemy, b) * 1.8 - (b.acted ? 0 : 1);
+    return aScore - bScore;
+  })[0];
+}
+
+function flankBonus(tile, target) {
+  const adjacentAllies = state.units.filter((unitData) => {
+    return unitData.side === "enemy" && distance(unitData, target) <= 1;
+  }).length;
+  return distance(tile, target) <= 1 ? adjacentAllies * 0.5 : 0;
 }
 
 function checkWinLoss() {
@@ -538,11 +638,13 @@ function checkWinLoss() {
 
   if (!enemiesLeft) {
     const reward = completeMission();
+    playSound("victory");
     showResult("Zona despejada", `Victoria en ${missions[state.missionIndex].name}. Recompensa: ${formatMoney(reward.credits)} y ${reward.research} datos de investigacion.`);
     return true;
   }
 
   if (!heroesLeft) {
+    playSound("defeat");
     showResult("Mision fallida", "La zona queda perdida. Reinicia y prueba otra combinacion de armas.");
     return true;
   }
@@ -590,6 +692,10 @@ function getHighlights(selected) {
   return highlights;
 }
 
+function getCurrentCover() {
+  return new Set((missions[state?.missionIndex || selectedMissionIndex]?.map?.cover || Array.from(coverTiles)));
+}
+
 function getWeaponSet() {
   return state && factions[state.factionId]?.economy ? bioWeapons : weapons;
 }
@@ -605,6 +711,7 @@ function updateWeaponCards() {
 
 function renderBowBuilder() {
   const isUmbrella = selectedFaction === "umbrella";
+  const maxUnits = hasUpgrade("squadSlot", "umbrella") ? playerSpawn.length : 5;
   bowBuilder.classList.toggle("is-hidden", !isUmbrella);
   updateWeaponCards();
   if (!isUmbrella) return;
@@ -615,7 +722,7 @@ function renderBowBuilder() {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "shop-card";
-    button.disabled = bowBudget < item.cost || selectedBows.length >= playerSpawn.length;
+    button.disabled = bowBudget < item.cost || selectedBows.length >= maxUnits;
     button.innerHTML = `
       <strong>${item.name}</strong>
       <span>${formatMoney(item.cost)} - Vida ${item.hp} - Mov ${item.move}</span>
@@ -642,6 +749,7 @@ function buyBow(bowId) {
   if (!item || bowBudget < item.cost || selectedBows.length >= playerSpawn.length) return;
   selectedBows.push(bowId);
   bowBudget -= item.cost;
+  playSound("upgrade");
   renderBowBuilder();
 }
 
@@ -650,6 +758,7 @@ function removeBow(index) {
   if (!removed) return;
   const item = bowShop.find((bow) => bow.id === removed);
   bowBudget += item.cost;
+  playSound("ui");
   renderBowBuilder();
 }
 
@@ -665,8 +774,9 @@ function formatMoney(value) {
 
 function getFactionProgress(factionId = selectedFaction) {
   if (!campaign[factionId]) {
-    campaign[factionId] = { wins: 0, credits: 0, research: 0, unlockedMission: 0, bestRounds: {} };
+    campaign[factionId] = { wins: 0, credits: 0, research: 0, unlockedMission: 0, bestRounds: {}, upgrades: [] };
   }
+  if (!campaign[factionId].upgrades) campaign[factionId].upgrades = [];
   return campaign[factionId];
 }
 
@@ -684,9 +794,26 @@ function saveCampaign() {
 }
 
 function resetCampaignProgress() {
-  campaign[selectedFaction] = { wins: 0, credits: 0, research: 0, unlockedMission: 0, bestRounds: {} };
+  campaign[selectedFaction] = { wins: 0, credits: 0, research: 0, unlockedMission: 0, bestRounds: {}, upgrades: [] };
   saveCampaign();
   selectedMissionIndex = 0;
+  renderStartScreen();
+}
+
+function hasUpgrade(upgradeId, factionId = selectedFaction) {
+  return getFactionProgress(factionId).upgrades.includes(upgradeId);
+}
+
+function buyUpgrade(upgradeId) {
+  const upgrade = upgrades.find((item) => item.id === upgradeId);
+  const progress = getFactionProgress(selectedFaction);
+  if (!upgrade || progress.upgrades.includes(upgradeId)) return;
+  if (progress.credits < upgrade.cost || progress.research < upgrade.research) return;
+  progress.credits -= upgrade.cost;
+  progress.research -= upgrade.research;
+  progress.upgrades.push(upgradeId);
+  saveCampaign();
+  playSound("upgrade");
   renderStartScreen();
 }
 
@@ -719,13 +846,78 @@ function renderStartScreen() {
     missionList.appendChild(button);
   });
   missionBrief.textContent = missions[selectedMissionIndex].briefing;
+  renderUpgradeShop(progress);
   renderBowBuilder();
+}
+
+function renderUpgradeShop(progress) {
+  upgradeList.innerHTML = "";
+  upgrades.forEach((upgrade) => {
+    const owned = progress.upgrades.includes(upgrade.id);
+    const canBuy = progress.credits >= upgrade.cost && progress.research >= upgrade.research && !owned;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "upgrade-card";
+    button.classList.toggle("is-owned", owned);
+    button.disabled = !canBuy;
+    button.innerHTML = `
+      <strong>${owned ? "Comprado: " : ""}${upgrade.name}</strong>
+      <span>${upgrade.text}</span>
+      <span>${formatMoney(upgrade.cost)} - ${upgrade.research} investigacion</span>
+    `;
+    button.addEventListener("click", () => buyUpgrade(upgrade.id));
+    upgradeList.appendChild(button);
+  });
 }
 
 function showStartScreen() {
   resultModal.classList.add("is-hidden");
   startScreen.classList.remove("is-hidden");
   renderStartScreen();
+}
+
+function unlockAudio() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioContext.state === "suspended") audioContext.resume();
+}
+
+function playSound(type) {
+  if (!audioContext) return;
+  const now = audioContext.currentTime;
+  const gain = audioContext.createGain();
+  gain.connect(audioContext.destination);
+  gain.gain.setValueAtTime(0.0001, now);
+
+  const osc = audioContext.createOscillator();
+  osc.connect(gain);
+  const config = {
+    ui: [520, 0.05, "triangle", 0.05],
+    step: [120, 0.07, "sine", 0.04],
+    shot: [920, 0.08, "square", 0.06],
+    bite: [180, 0.12, "sawtooth", 0.05],
+    special: [260, 0.22, "sawtooth", 0.08],
+    turn: [420, 0.12, "triangle", 0.04],
+    death: [90, 0.22, "sine", 0.06],
+    upgrade: [760, 0.18, "triangle", 0.06],
+    victory: [660, 0.28, "triangle", 0.08],
+    defeat: [110, 0.36, "sawtooth", 0.06]
+  }[type] || [440, 0.1, "sine", 0.04];
+
+  osc.frequency.setValueAtTime(config[0], now);
+  osc.type = config[2];
+  gain.gain.linearRampToValueAtTime(config[3], now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + config[1]);
+  osc.start(now);
+  osc.stop(now + config[1] + 0.02);
+}
+
+function pulseTurn() {
+  gameStage.classList.remove("turn-pulse");
+  window.requestAnimationFrame(() => {
+    gameStage.classList.add("turn-pulse");
+  });
 }
 
 function getSelectedUnit() {
@@ -754,6 +946,8 @@ function addLog(message) {
 
 document.querySelectorAll(".weapon-card").forEach((button) => {
   button.addEventListener("click", () => {
+    unlockAudio();
+    playSound("ui");
     state.selectedWeapon = button.dataset.weapon;
     document.querySelectorAll(".weapon-card").forEach((weaponButton) => {
       weaponButton.classList.toggle("is-selected", weaponButton === button);
@@ -763,16 +957,22 @@ document.querySelectorAll(".weapon-card").forEach((button) => {
 });
 
 actionButtons.move.addEventListener("click", () => {
+  unlockAudio();
+  playSound("ui");
   state.mode = "move";
   render();
 });
 
 actionButtons.attack.addEventListener("click", () => {
+  unlockAudio();
+  playSound("ui");
   state.mode = "attack";
   render();
 });
 
 actionButtons.special.addEventListener("click", () => {
+  unlockAudio();
+  playSound("ui");
   if (state.specialUsed) return;
   state.mode = "special";
   render();
@@ -788,15 +988,37 @@ actionButtons.wait.addEventListener("click", () => {
 
 actionButtons.end.addEventListener("click", startEnemyTurn);
 document.querySelector("#restartBtn").addEventListener("click", () => newGame(state.factionId));
-menuBtn.addEventListener("click", showStartScreen);
+menuBtn.addEventListener("click", () => {
+  unlockAudio();
+  playSound("ui");
+  showStartScreen();
+});
 nextMissionBtn.addEventListener("click", () => {
+  unlockAudio();
   selectedMissionIndex = Math.min(state.missionIndex + 1, missions.length - 1);
   newGame(state.factionId);
 });
 resetProgressBtn.addEventListener("click", resetCampaignProgress);
+continueBtn.addEventListener("click", () => {
+  unlockAudio();
+  playSound("ui");
+  titleScreen.classList.add("is-hidden");
+  showStartScreen();
+});
+tutorialBtn.addEventListener("click", () => {
+  unlockAudio();
+  playSound("ui");
+  tutorialModal.classList.remove("is-hidden");
+});
+closeTutorialBtn.addEventListener("click", () => {
+  playSound("ui");
+  tutorialModal.classList.add("is-hidden");
+});
 
 document.querySelectorAll(".faction-card").forEach((button) => {
   button.addEventListener("click", () => {
+    unlockAudio();
+    playSound("ui");
     selectedFaction = button.dataset.faction;
     selectedMissionIndex = Math.min(selectedMissionIndex, getFactionProgress(selectedFaction).unlockedMission);
     addStartSelection(button);
@@ -814,4 +1036,5 @@ startBtn.addEventListener("click", () => newGame(selectedFaction));
 
 newGame("bsaa");
 startScreen.classList.remove("is-hidden");
+titleScreen.classList.remove("is-hidden");
 renderStartScreen();
