@@ -29,6 +29,18 @@ Para este proyecto conviene migrar a Godot antes que Unity si quieren avanzar ra
 5. Rehacer UI nativa.
 6. Exportar a web para compartir.
 
+## Proyecto Godot incluido
+
+Ya hay una base en `godot/`:
+
+- `godot/project.godot`
+- `godot/scenes/Main.tscn`
+- `godot/scripts/Main.gd`
+- `godot/data/game_data.json`
+- `godot/assets/`
+
+Abrir Godot, elegir `Import`, seleccionar `godot/project.godot` y ejecutar.
+
 ## Unity
 
 Unity conviene si luego quieren 3D real, modelos animados, camaras complejas o publicar en muchas plataformas. Para el estado actual, seria mas trabajo inicial.

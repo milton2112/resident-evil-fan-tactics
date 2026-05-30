@@ -6,6 +6,14 @@ Primer prototipo jugable fan inspirado en Resident Evil: tactico por turnos, vis
 
 Abrir `index.html` en el navegador.
 
+## Version Godot
+
+Abrir Godot 4.6+, elegir `Import` y seleccionar:
+
+`godot/project.godot`
+
+La version Godot es una base migrada: menu, seleccion de faccion/mision, tablero isometrico inicial, sprites y audio importados.
+
 Repo:
 
 https://github.com/milton2112/resident-evil-fan-tactics

@@ -1,0 +1,105 @@
+[gd_scene load_steps=2 format=3 uid="uid://resident_evil_fan_tactics_main"]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_main")
+
+[node name="Music" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+
+[node name="Sfx" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+
+[node name="TitleScreen" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 80.0
+offset_top = 80.0
+offset_right = -80.0
+offset_bottom = -80.0
+theme_override_constants/separation = 18
+
+[node name="Title" type="Label" parent="TitleScreen"]
+text = "Resident Evil: Biohazard Tactics"
+theme_override_font_sizes/font_size = 48
+
+[node name="Subtitle" type="Label" parent="TitleScreen"]
+text = "Prototipo Godot 2.5D tactico"
+
+[node name="Continue" type="Button" parent="TitleScreen"]
+text = "Continuar"
+
+[node name="StartScreen" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 28.0
+offset_top = 28.0
+offset_right = -28.0
+offset_bottom = -28.0
+theme_override_constants/separation = 18
+
+[node name="Left" type="VBoxContainer" parent="StartScreen"]
+custom_minimum_size = Vector2(360, 0)
+
+[node name="CampaignStats" type="Label" parent="StartScreen/Left"]
+unique_name_in_owner = true
+text = "Campaña"
+
+[node name="FactionList" type="VBoxContainer" parent="StartScreen/Left"]
+unique_name_in_owner = true
+
+[node name="MissionTitle" type="Label" parent="StartScreen/Left"]
+unique_name_in_owner = true
+autowrap_mode = 2
+text = "Mision"
+
+[node name="MissionList" type="VBoxContainer" parent="StartScreen/Left"]
+unique_name_in_owner = true
+
+[node name="Start" type="Button" parent="StartScreen/Left"]
+text = "Iniciar mision"
+
+[node name="BattlePreview" type="Panel" parent="StartScreen"]
+size_flags_horizontal = 3
+
+[node name="BattleScreen" type="HBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+
+[node name="BattleArea" type="Panel" parent="BattleScreen"]
+size_flags_horizontal = 3
+
+[node name="BattleGrid" type="Node2D" parent="BattleScreen/BattleArea"]
+unique_name_in_owner = true
+
+[node name="Side" type="VBoxContainer" parent="BattleScreen"]
+custom_minimum_size = Vector2(320, 0)
+
+[node name="UnitPanel" type="VBoxContainer" parent="BattleScreen/Side"]
+unique_name_in_owner = true
+
+[node name="LogLabel" type="RichTextLabel" parent="BattleScreen/Side"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 240)
+
+[connection signal="pressed" from="TitleScreen/Continue" to="." method="_on_continue_pressed"]
+[connection signal="pressed" from="StartScreen/Left/Start" to="." method="_on_start_pressed"]
