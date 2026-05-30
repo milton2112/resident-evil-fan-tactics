@@ -361,27 +361,27 @@ func diamond_points(width: float, height: float) -> PackedVector2Array:
 
 func draw_cover_prop(holder: Node2D) -> void:
 	var prop = PROP_VIEW.instantiate()
-	prop.setup("res://assets/painted/props/cover_crate.png")
 	prop.position = Vector2(0, -20)
 	prop.scale = Vector2(0.62, 0.62)
 	prop.z_index = 5
 	holder.add_child(prop)
+	prop.setup("res://assets/painted/props/cover_crate.png")
 
 func draw_obstacle_prop(holder: Node2D) -> void:
 	var prop = PROP_VIEW.instantiate()
-	prop.setup("res://assets/painted/props/lab_tank.png")
 	prop.position = Vector2(0, -26)
 	prop.scale = Vector2(0.55, 0.55)
 	prop.z_index = 6
 	holder.add_child(prop)
+	prop.setup("res://assets/painted/props/lab_tank.png")
 
 func draw_door_prop(holder: Node2D) -> void:
 	var prop = PROP_VIEW.instantiate()
-	prop.setup("res://assets/painted/props/metal_door.png")
 	prop.position = Vector2(0, -34)
 	prop.scale = Vector2(0.5, 0.5)
 	prop.z_index = 7
 	holder.add_child(prop)
+	prop.setup("res://assets/painted/props/metal_door.png")
 
 func draw_unit(unit: Dictionary, index: int) -> void:
 	var holder := Node2D.new()
@@ -390,12 +390,12 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 	battle_grid.add_child(holder)
 	var accent: Color = COLORS.hero if unit.side == "hero" else COLORS.enemy
 	var unit_view = UNIT_VIEW.instantiate()
-	unit_view.setup(unit)
 	var sprite_scale = UNIT_SCALES.get(unit.art, 0.62)
 	unit_view.scale = Vector2(sprite_scale / 0.62, sprite_scale / 0.62)
+	holder.add_child(unit_view)
+	unit_view.setup(unit)
 	unit_view.set_selected(index == selected_unit)
 	unit_view.get_node("HpBar").color = accent
-	holder.add_child(unit_view)
 	var name_label := Label.new()
 	name_label.text = unit.name
 	name_label.position = Vector2(-36, 43)
