@@ -1,40 +1,22 @@
-# Lista completa del MVP
+# Lista de trabajo - Godot
 
 ## Hecho
 
-- Base jugable 2.5D isometrica.
-- Facciones BSAA, DSO, Hound Wolf y Umbrella.
-- Combate por turnos con mover, atacar, esperar y especial.
-- Economia B.O.W. para Umbrella.
-- Selector de mision.
-- Progreso local por faccion.
-- Recompensas de credito e investigacion.
-- Guardado en el navegador.
-- Pantalla de titulo.
-- Tutorial de 3 pasos.
-- Sprites propios por CSS para humanos, infectados y B.O.W.s.
-- Sonido sintetico para UI, disparos, mordidas, turnos, victoria y derrota.
-- Animaciones de movimiento, golpe, ataque, especial y cambio de turno.
-- Mapas con coberturas distintas por mision.
-- IA con prioridad por vida/rango y busqueda de flanqueo simple.
-- Tienda de mejoras de campana.
-- Audio real en archivos `.wav`, musica ambiente, volumen y mute.
-- Sprites SVG propios para unidades, armas y tiles.
-- Mapa de campana con nodos conectados.
-- Editor rapido de mapas con cobertura y spawns guardados localmente.
-- Documentacion para GitHub Pages.
-- Guia de migracion a Godot/Unity.
-- Modal de victoria/derrota con reintento, menu y siguiente mision.
-- Objetivos y progreso visibles durante la partida.
-- Proyecto subido a GitHub.
+- Proyecto Godot 4.6 importable.
+- Menu inicial, seleccion de faccion y seleccion de mision.
+- Tablero isometrico clickeable.
+- Unidades con vida, movimiento, dano y rango.
+- Acciones de mover, atacar, esperar y terminar turno.
+- IA enemiga basica con avance hacia objetivos y ataque en rango.
+- Condiciones de victoria y derrota.
+- Sprites SVG y sonidos WAV dentro de `godot/assets`.
 
-## Siguiente bloque grande
+## Siguiente bloque
 
-- Arte propio para personajes y escenarios.
-- Animaciones de caminar, ataque y muerte.
-- Sonidos y musica ambiental.
-- Balance fino de armas, B.O.W.s y enemigos.
-- Mas mapas con obstaculos distintos.
-- Pantalla de campana con desbloqueos.
-- IA enemiga con cobertura y prioridades.
-- Version empaquetada como app de escritorio si hiciera falta.
+- Mejorar interfaz de combate para que sea mas clara y menos prototipo.
+- Agregar animaciones reales de caminar, atacar, recibir dano y morir.
+- Crear mas mapas desde datos, con obstaculos y objetivos distintos.
+- Implementar campana persistente dentro de Godot.
+- Agregar tienda, mejoras, desbloqueos y escuadron configurable.
+- Mejorar IA con cobertura, prioridad por unidad debil y tipos de enemigo.
+- Exportar una build jugable de Windows cuando el prototipo sea mas estable.
