@@ -50,6 +50,8 @@ var obstacle_tiles := {}
 var door_tiles := {}
 var active_map := {}
 var battle_over := false
+var battle_result := ""
+var reward_claimed := false
 
 @onready var title_screen: Control = %TitleScreen
 @onready var start_screen: Control = %StartScreen
@@ -78,6 +80,33 @@ func _ready() -> void:
 	render_factions()
 	render_missions()
 	show_title()
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_M:
+				current_mode = "move"
+				render_battle()
+			KEY_A:
+				current_mode = "attack"
+				selected_weapon = "pistol"
+				render_battle()
+			KEY_G:
+				current_mode = "grenade"
+				selected_weapon = "grenade"
+				render_battle()
+			KEY_H:
+				current_mode = "heal"
+				selected_weapon = "medkit"
+				render_battle()
+			KEY_O:
+				enable_overwatch()
+			KEY_SPACE:
+				if battle_screen.visible:
+					start_enemy_turn()
+			KEY_ESCAPE:
+				if battle_screen.visible:
+					show_menu()
 
 func apply_visual_theme() -> void:
 	add_theme_color_override("font_color", COLORS.text)
@@ -128,6 +157,11 @@ func load_json(path: String) -> Dictionary:
 	var parsed = JSON.parse_string(file.get_as_text()) if file else {}
 	return parsed if typeof(parsed) == TYPE_DICTIONARY else {}
 
+func save_json(path: String, payload: Dictionary) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file:
+		file.store_string(JSON.stringify(payload, "\t"))
+
 func show_title() -> void:
 	title_screen.visible = true
 	start_screen.visible = false
@@ -150,6 +184,8 @@ func start_battle() -> void:
 	selected_weapon = "pistol"
 	acted_units = {}
 	battle_over = false
+	battle_result = ""
+	reward_claimed = false
 	active_map = data.missions[selected_mission].get("map", {})
 	cover_tiles = active_map.get("cover", [])
 	obstacle_tiles = array_to_lookup(active_map.get("obstacles", []))
@@ -425,6 +461,9 @@ func render_unit_panel() -> void:
 	var title := Label.new()
 	title.text = "Combate terminado" if battle_over else "Ronda %s | Turno: %s | Modo: %s" % [round_number, turn_side, current_mode]
 	unit_panel.add_child(title)
+	if battle_over:
+		render_result_panel()
+		return
 	var move_button := Button.new()
 	move_button.text = "Mover"
 	move_button.disabled = battle_over
@@ -505,6 +544,35 @@ func render_unit_panel() -> void:
 		)
 		unit_panel.add_child(button)
 
+func render_result_panel() -> void:
+	var mission = data.missions[selected_mission]
+	var summary := Label.new()
+	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if battle_result == "victory":
+		summary.text = "Victoria en %s\nRecompensa: $%s / Investigacion %s" % [mission.name, mission.rewardCredits, mission.rewardResearch]
+	else:
+		summary.text = "Derrota en %s\nReagrupa al escuadron y vuelve a intentarlo." % mission.name
+	unit_panel.add_child(summary)
+	var retry_button := Button.new()
+	retry_button.text = "Reintentar"
+	style_button(retry_button)
+	retry_button.pressed.connect(start_battle)
+	unit_panel.add_child(retry_button)
+	var menu_button := Button.new()
+	menu_button.text = "Volver al menu"
+	style_button(menu_button)
+	menu_button.pressed.connect(show_menu)
+	unit_panel.add_child(menu_button)
+	if battle_result == "victory" and selected_mission < data.missions.size() - 1:
+		var next_button := Button.new()
+		next_button.text = "Siguiente mision"
+		style_button(next_button, true)
+		next_button.pressed.connect(func():
+			selected_mission += 1
+			start_battle()
+		)
+		unit_panel.add_child(next_button)
+
 func get_tile_color(x: int, y: int) -> Color:
 	var key := "%s,%s" % [x, y]
 	if cover_tiles.has(key):
@@ -561,7 +629,7 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 	var target = units[target_index]
 	if attacker.side == target.side:
 		return
-	var weapon = data.weapons.get(selected_weapon, data.weapons.pistol)
+	var weapon = data.weapons.get(selected_weapon, data.weapons.pistol) if attacker.side == "hero" else {}
 	var attack_range = int(weapon.get("range", attacker.range))
 	if distance_xy(attacker.x, attacker.y, target.x, target.y) > attack_range:
 		return
@@ -574,7 +642,8 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 		mark_if_spent(attacker)
 		add_log("%s falla contra %s." % [attacker.name, target.name])
 		play_sfx("res://assets/audio/shot.wav")
-		select_next_ready_hero()
+		if attacker.side == "hero":
+			select_next_ready_hero()
 		render_battle()
 		return
 	var damage: int = int(weapon.get("damage", attacker.damage))
@@ -644,7 +713,9 @@ func try_grenade(attacker_index: int, target_index: int) -> void:
 	spawn_effect(target.x, target.y, "explosion")
 	add_log("%s lanza una granada." % attacker.name)
 	play_sfx("res://assets/audio/special.wav")
-	check_result()
+	if check_result():
+		render_battle()
+		return
 	select_next_ready_hero()
 	render_battle()
 
@@ -735,13 +806,28 @@ func check_result() -> bool:
 		add_log("Victoria. Zona despejada.")
 		play_sfx("res://assets/audio/victory.wav")
 		battle_over = true
+		battle_result = "victory"
+		claim_mission_rewards()
 		return true
 	if heroes.is_empty():
 		add_log("Derrota. El brote domina la zona.")
 		play_sfx("res://assets/audio/defeat.wav")
 		battle_over = true
+		battle_result = "defeat"
 		return true
 	return false
+
+func claim_mission_rewards() -> void:
+	if reward_claimed:
+		return
+	reward_claimed = true
+	var progress := get_progress(selected_faction)
+	var mission = data.missions[selected_mission]
+	progress.wins += 1
+	progress.credits += int(mission.get("rewardCredits", 0))
+	progress.research += int(mission.get("rewardResearch", 0))
+	progress.unlockedMission = max(int(progress.unlockedMission), min(selected_mission + 1, data.missions.size() - 1))
+	save_json(SAVE_PATH, campaign)
 
 func unit_at(x: int, y: int) -> int:
 	for i in range(units.size()):
