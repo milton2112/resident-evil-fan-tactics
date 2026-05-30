@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/TileView.gd" id="1_tile"]
+
+[node name="TileView" type="Node2D"]
+script = ExtResource("1_tile")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+scale = Vector2(0.5, 0.5)
+
+[node name="HitButton" type="Button" parent="."]
+offset_left = -38.0
+offset_top = -20.0
+offset_right = 38.0
+offset_bottom = 20.0
+flat = true
+modulate = Color(1, 1, 1, 0.01)
+
+[connection signal="pressed" from="HitButton" to="." method="_on_hit_button_pressed"]

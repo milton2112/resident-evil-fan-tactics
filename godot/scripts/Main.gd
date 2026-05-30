@@ -2,6 +2,9 @@ extends Control
 
 const DATA_PATH := "res://data/game_data.json"
 const SAVE_PATH := "user://campaign_save.json"
+const UNIT_VIEW := preload("res://scenes/UnitView.tscn")
+const PROP_VIEW := preload("res://scenes/PropView.tscn")
+const EFFECT_BURST := preload("res://scenes/EffectBurst.tscn")
 const TILE_W := 76.0
 const TILE_H := 40.0
 const BOARD_W := 12
@@ -39,9 +42,13 @@ var units := []
 var turn_side := "hero"
 var selected_unit := -1
 var current_mode := "move"
+var selected_weapon := "pistol"
 var round_number := 1
 var acted_units := {}
 var cover_tiles := ["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]
+var obstacle_tiles := {}
+var door_tiles := {}
+var active_map := {}
 var battle_over := false
 
 @onready var title_screen: Control = %TitleScreen
@@ -140,8 +147,13 @@ func start_battle() -> void:
 	turn_side = "hero"
 	selected_unit = 0
 	current_mode = "move"
+	selected_weapon = "pistol"
 	acted_units = {}
 	battle_over = false
+	active_map = data.missions[selected_mission].get("map", {})
+	cover_tiles = active_map.get("cover", [])
+	obstacle_tiles = array_to_lookup(active_map.get("obstacles", []))
+	door_tiles = array_to_lookup(active_map.get("doors", []))
 	units = build_units()
 	log_label.clear()
 	render_battle()
@@ -150,15 +162,50 @@ func start_battle() -> void:
 	play_sfx("res://assets/audio/turn.wav")
 
 func build_units() -> Array:
-	return [
-		{"id": "h1", "name": "Chris", "side": "hero", "x": 1, "y": 1, "hp": 12, "max_hp": 12, "move": 4, "damage": 3, "range": 4, "sprite": "soldier.svg", "art": "chris.png"},
-		{"id": "h2", "name": "Jill", "side": "hero", "x": 1, "y": 3, "hp": 10, "max_hp": 10, "move": 5, "damage": 3, "range": 4, "sprite": "agent.svg", "art": "jill.png"},
-		{"id": "h3", "name": "Leon", "side": "hero", "x": 1, "y": 5, "hp": 10, "max_hp": 10, "move": 4, "damage": 4, "range": 5, "sprite": "agent.svg", "art": "leon.png"},
-		{"id": "e1", "name": "Zombie", "side": "enemy", "x": 10, "y": 1, "hp": 7, "max_hp": 7, "move": 3, "damage": 2, "range": 1, "sprite": "zombie.svg", "art": "zombie.png"},
-		{"id": "e2", "name": "Cerberus", "side": "enemy", "x": 9, "y": 3, "hp": 6, "max_hp": 6, "move": 5, "damage": 2, "range": 1, "sprite": "cerberus.svg", "art": "cerberus.png"},
-		{"id": "e3", "name": "Licker", "side": "enemy", "x": 10, "y": 5, "hp": 12, "max_hp": 12, "move": 4, "damage": 3, "range": 1, "sprite": "licker.svg", "art": "licker.png"},
-		{"id": "e4", "name": "Tyrant", "side": "enemy", "x": 11, "y": 7, "hp": 18, "max_hp": 18, "move": 2, "damage": 4, "range": 1, "sprite": "tyrant.svg", "art": "tyrant.png"}
-	]
+	var heroes = active_map.get("heroes", [
+		{"id": "h1", "name": "Chris", "x": 1, "y": 1, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault"},
+		{"id": "h2", "name": "Jill", "x": 1, "y": 3, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout"},
+		{"id": "h3", "name": "Leon", "x": 1, "y": 5, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman"}
+	])
+	var enemies = active_map.get("enemies", [
+		{"id": "e1", "name": "Zombie", "x": 10, "y": 1, "hp": 7, "move": 3, "damage": 2, "range": 1, "art": "zombie.png", "role": "slow"},
+		{"id": "e2", "name": "Cerberus", "x": 9, "y": 3, "hp": 6, "move": 5, "damage": 2, "range": 1, "art": "cerberus.png", "role": "runner"},
+		{"id": "e3", "name": "Licker", "x": 10, "y": 5, "hp": 12, "move": 4, "damage": 3, "range": 1, "art": "licker.png", "role": "ambusher"},
+		{"id": "e4", "name": "Tyrant", "x": 11, "y": 7, "hp": 18, "move": 2, "damage": 4, "range": 1, "art": "tyrant.png", "role": "boss"}
+	])
+	var built := []
+	for hero in heroes:
+		built.append(make_unit(hero, "hero"))
+	for enemy in enemies:
+		built.append(make_unit(enemy, "enemy"))
+	return built
+
+func make_unit(raw: Dictionary, side: String) -> Dictionary:
+	var hp := int(raw.get("hp", 10))
+	return {
+		"id": raw.get("id", "%s-%s-%s" % [side, raw.get("x", 0), raw.get("y", 0)]),
+		"name": raw.get("name", "Unidad"),
+		"side": side,
+		"x": int(raw.get("x", 0)),
+		"y": int(raw.get("y", 0)),
+		"hp": hp,
+		"max_hp": hp,
+		"move": int(raw.get("move", 4)),
+		"damage": int(raw.get("damage", 3)),
+		"range": int(raw.get("range", 4)),
+		"art": raw.get("art", "chris.png"),
+		"role": raw.get("role", "unit"),
+		"ap": 2,
+		"max_ap": 2,
+		"ammo": int(raw.get("ammo", 8)),
+		"status": []
+	}
+
+func array_to_lookup(items: Array) -> Dictionary:
+	var lookup := {}
+	for item in items:
+		lookup[item] = true
+	return lookup
 
 func render_factions() -> void:
 	for child in faction_list.get_children():
@@ -211,6 +258,7 @@ func render_battle() -> void:
 	for y in range(BOARD_H):
 		for x in range(BOARD_W):
 			draw_tile(x, y)
+	draw_board_hit_layer()
 	for index in range(units.size()):
 		var unit = units[index]
 		draw_unit(unit, index)
@@ -263,16 +311,37 @@ func draw_tile(x: int, y: int) -> void:
 	holder.add_child(highlight)
 	if cover_tiles.has("%s,%s" % [x, y]):
 		draw_cover_prop(holder)
-	var hitbox := Button.new()
-	hitbox.flat = true
-	hitbox.text = ""
-	hitbox.modulate = Color(1, 1, 1, 0.01)
-	hitbox.size = Vector2(TILE_W, TILE_H)
-	hitbox.position = Vector2(-TILE_W / 2.0, -TILE_H / 2.0)
-	hitbox.pressed.connect(func(tx := x, ty := y):
-		handle_tile(tx, ty)
+	if obstacle_tiles.has("%s,%s" % [x, y]):
+		draw_obstacle_prop(holder)
+	if door_tiles.has("%s,%s" % [x, y]):
+		draw_door_prop(holder)
+
+func draw_board_hit_layer() -> void:
+	var hit_layer := Control.new()
+	hit_layer.position = Vector2(0, 0)
+	hit_layer.size = Vector2(920, 560)
+	hit_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	hit_layer.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			var tile := screen_to_tile(event.position)
+			if tile.x >= 0:
+				handle_tile(int(tile.x), int(tile.y))
 	)
-	holder.add_child(hitbox)
+	hit_layer.z_index = 50
+	battle_grid.add_child(hit_layer)
+
+func screen_to_tile(pos: Vector2) -> Vector2:
+	var best := Vector2(-1, -1)
+	var best_dist := 999999.0
+	for y in range(BOARD_H):
+		for x in range(BOARD_W):
+			var d := pos.distance_squared_to(iso_pos(x, y))
+			if d < best_dist:
+				best_dist = d
+				best = Vector2(x, y)
+	if best_dist <= 1800.0:
+		return best
+	return Vector2(-1, -1)
 
 func tile_art_path(x: int, y: int) -> String:
 	var key := "%s,%s" % [x, y]
@@ -291,11 +360,27 @@ func diamond_points(width: float, height: float) -> PackedVector2Array:
 	return PackedVector2Array([Vector2(0, -height / 2.0), Vector2(width / 2.0, 0), Vector2(0, height / 2.0), Vector2(-width / 2.0, 0)])
 
 func draw_cover_prop(holder: Node2D) -> void:
-	var prop := Sprite2D.new()
-	prop.texture = load("res://assets/painted/props/cover_crate.png")
+	var prop = PROP_VIEW.instantiate()
+	prop.setup("res://assets/painted/props/cover_crate.png")
 	prop.position = Vector2(0, -20)
 	prop.scale = Vector2(0.62, 0.62)
 	prop.z_index = 5
+	holder.add_child(prop)
+
+func draw_obstacle_prop(holder: Node2D) -> void:
+	var prop = PROP_VIEW.instantiate()
+	prop.setup("res://assets/painted/props/lab_tank.png")
+	prop.position = Vector2(0, -26)
+	prop.scale = Vector2(0.55, 0.55)
+	prop.z_index = 6
+	holder.add_child(prop)
+
+func draw_door_prop(holder: Node2D) -> void:
+	var prop = PROP_VIEW.instantiate()
+	prop.setup("res://assets/painted/props/metal_door.png")
+	prop.position = Vector2(0, -34)
+	prop.scale = Vector2(0.5, 0.5)
+	prop.z_index = 7
 	holder.add_child(prop)
 
 func draw_unit(unit: Dictionary, index: int) -> void:
@@ -303,29 +388,14 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 	holder.position = iso_pos(unit.x, unit.y) + Vector2(0, -24)
 	holder.z_index = 500 + unit.y * 10 + unit.x
 	battle_grid.add_child(holder)
-	var shadow := Polygon2D.new()
-	shadow.position = Vector2(0, 28)
-	shadow.scale = Vector2(1.1, 0.28)
-	shadow.polygon = diamond_points(54, 28)
-	shadow.color = Color(0, 0, 0, 0.34)
-	holder.add_child(shadow)
 	var accent: Color = COLORS.hero if unit.side == "hero" else COLORS.enemy
-	var unit_sprite := Sprite2D.new()
-	unit_sprite.texture = load("res://assets/painted/units/%s" % unit.art)
-	unit_sprite.position = Vector2(0, -18)
+	var unit_view = UNIT_VIEW.instantiate()
+	unit_view.setup(unit)
 	var sprite_scale = UNIT_SCALES.get(unit.art, 0.62)
-	unit_sprite.scale = Vector2(sprite_scale, sprite_scale)
-	holder.add_child(unit_sprite)
-	var hp_bg := ColorRect.new()
-	hp_bg.position = Vector2(-22, 36)
-	hp_bg.size = Vector2(44, 5)
-	hp_bg.color = Color(0, 0, 0, 0.55)
-	holder.add_child(hp_bg)
-	var hp_bar := ColorRect.new()
-	hp_bar.position = hp_bg.position
-	hp_bar.size = Vector2(44.0 * clamp(float(unit.hp) / float(unit.max_hp), 0.0, 1.0), 5)
-	hp_bar.color = accent
-	holder.add_child(hp_bar)
+	unit_view.scale = Vector2(sprite_scale / 0.62, sprite_scale / 0.62)
+	unit_view.set_selected(index == selected_unit)
+	unit_view.get_node("HpBar").color = accent
+	holder.add_child(unit_view)
 	var name_label := Label.new()
 	name_label.text = unit.name
 	name_label.position = Vector2(-36, 43)
@@ -387,13 +457,42 @@ func render_unit_panel() -> void:
 	style_button(end_button, true)
 	end_button.pressed.connect(start_enemy_turn)
 	unit_panel.add_child(end_button)
+	var grenade_button := Button.new()
+	grenade_button.text = "Granada"
+	grenade_button.disabled = battle_over
+	style_button(grenade_button, current_mode == "grenade")
+	grenade_button.pressed.connect(func():
+		current_mode = "grenade"
+		selected_weapon = "grenade"
+		render_battle()
+		play_sfx("res://assets/audio/ui.wav")
+	)
+	unit_panel.add_child(grenade_button)
+	var overwatch_button := Button.new()
+	overwatch_button.text = "Overwatch"
+	overwatch_button.disabled = battle_over
+	style_button(overwatch_button)
+	overwatch_button.pressed.connect(enable_overwatch)
+	unit_panel.add_child(overwatch_button)
+	var heal_button := Button.new()
+	heal_button.text = "Curar"
+	heal_button.disabled = battle_over
+	style_button(heal_button, current_mode == "heal")
+	heal_button.pressed.connect(func():
+		current_mode = "heal"
+		selected_weapon = "medkit"
+		render_battle()
+		play_sfx("res://assets/audio/ui.wav")
+	)
+	unit_panel.add_child(heal_button)
 	for i in range(units.size()):
 		var unit = units[i]
 		var button := Button.new()
-		button.text = "%s | %s/%s HP | %s%s" % [
+		button.text = "%s | %s/%s HP | AP %s | %s%s" % [
 			unit.name,
 			unit.hp,
 			unit.max_hp,
+			unit.ap,
 			unit.side,
 			" | listo" if not acted_units.has(unit.id) else " | sin accion"
 		]
@@ -434,16 +533,22 @@ func handle_tile(x: int, y: int) -> void:
 		try_move_selected(x, y)
 	elif current_mode == "attack" and clicked >= 0:
 		try_attack(selected_unit, clicked)
+	elif current_mode == "grenade" and clicked >= 0:
+		try_grenade(selected_unit, clicked)
+	elif current_mode == "heal" and clicked >= 0:
+		try_heal(selected_unit, clicked)
 
 func try_move_selected(x: int, y: int) -> void:
 	var unit = units[selected_unit]
-	if distance_xy(unit.x, unit.y, x, y) > unit.move:
+	var path := find_path(Vector2i(unit.x, unit.y), Vector2i(x, y), unit.move)
+	if path.is_empty():
 		return
-	if unit_at(x, y) >= 0 or cover_tiles.has("%s,%s" % [x, y]):
+	if is_blocked(x, y):
 		return
 	unit.x = x
 	unit.y = y
-	acted_units[unit.id] = true
+	unit.ap -= 1
+	mark_if_spent(unit)
 	add_log("%s avanza." % unit.name)
 	play_sfx("res://assets/audio/step.wav")
 	select_next_ready_hero()
@@ -456,11 +561,31 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 	var target = units[target_index]
 	if attacker.side == target.side:
 		return
-	if distance_xy(attacker.x, attacker.y, target.x, target.y) > attacker.range:
+	var weapon = data.weapons.get(selected_weapon, data.weapons.pistol)
+	var attack_range = int(weapon.get("range", attacker.range))
+	if distance_xy(attacker.x, attacker.y, target.x, target.y) > attack_range:
 		return
-	target.hp -= attacker.damage
-	acted_units[attacker.id] = true
-	add_log("%s ataca a %s por %s." % [attacker.name, target.name, attacker.damage])
+	if not has_line_of_sight(attacker.x, attacker.y, target.x, target.y):
+		return
+	var hit_chance: int = clamp(int(weapon.get("accuracy", 80)) - cover_penalty(target.x, target.y), 15, 100)
+	var roll := randi_range(1, 100)
+	if roll > hit_chance:
+		attacker.ap -= 1
+		mark_if_spent(attacker)
+		add_log("%s falla contra %s." % [attacker.name, target.name])
+		play_sfx("res://assets/audio/shot.wav")
+		select_next_ready_hero()
+		render_battle()
+		return
+	var damage: int = int(weapon.get("damage", attacker.damage))
+	if randi_range(1, 100) <= int(weapon.get("crit", 10)):
+		damage += 2
+		add_log("Critico.")
+	target.hp -= damage
+	attacker.ap -= 1
+	mark_if_spent(attacker)
+	spawn_effect(target.x, target.y, "hit")
+	add_log("%s ataca a %s por %s." % [attacker.name, target.name, damage])
 	play_sfx("res://assets/audio/shot.wav" if attacker.side == "hero" else "res://assets/audio/bite.wav")
 	if target.hp <= 0:
 		add_log("%s cae." % target.name)
@@ -480,14 +605,67 @@ func wait_selected_unit() -> void:
 	var unit = units[selected_unit]
 	if unit.side != "hero":
 		return
-	acted_units[unit.id] = true
+	unit.ap = 0
+	mark_if_spent(unit)
 	add_log("%s espera." % unit.name)
+	select_next_ready_hero()
+	render_battle()
+
+func enable_overwatch() -> void:
+	if battle_over or selected_unit < 0 or selected_unit >= units.size():
+		return
+	var unit = units[selected_unit]
+	if unit.side != "hero" or unit.ap <= 0:
+		return
+	unit.status.append("overwatch")
+	unit.ap = 0
+	mark_if_spent(unit)
+	add_log("%s cubre la zona." % unit.name)
+	select_next_ready_hero()
+	render_battle()
+
+func try_grenade(attacker_index: int, target_index: int) -> void:
+	var attacker = units[attacker_index]
+	var target = units[target_index]
+	if attacker.side == target.side or attacker.ap <= 0:
+		return
+	if distance_xy(attacker.x, attacker.y, target.x, target.y) > 4:
+		return
+	for i in range(units.size() - 1, -1, -1):
+		if units[i].side != attacker.side and distance_xy(units[i].x, units[i].y, target.x, target.y) <= 1:
+			units[i].hp -= 4
+			if not units[i].status.has("bleeding"):
+				units[i].status.append("bleeding")
+			if units[i].hp <= 0:
+				add_log("%s cae por la explosion." % units[i].name)
+				units.remove_at(i)
+	attacker.ap = 0
+	mark_if_spent(attacker)
+	spawn_effect(target.x, target.y, "explosion")
+	add_log("%s lanza una granada." % attacker.name)
+	play_sfx("res://assets/audio/special.wav")
+	check_result()
+	select_next_ready_hero()
+	render_battle()
+
+func try_heal(healer_index: int, target_index: int) -> void:
+	var healer = units[healer_index]
+	var target = units[target_index]
+	if healer.side != target.side or healer.ap <= 0:
+		return
+	if distance_xy(healer.x, healer.y, target.x, target.y) > 1:
+		return
+	target.hp = min(target.max_hp, target.hp + 5)
+	healer.ap -= 1
+	mark_if_spent(healer)
+	add_log("%s cura a %s." % [healer.name, target.name])
+	play_sfx("res://assets/audio/ui.wav")
 	select_next_ready_hero()
 	render_battle()
 
 func select_next_ready_hero() -> void:
 	for i in range(units.size()):
-		if units[i].side == "hero" and not acted_units.has(units[i].id):
+		if units[i].side == "hero" and units[i].ap > 0 and not acted_units.has(units[i].id):
 			selected_unit = i
 			return
 	start_enemy_turn()
@@ -517,6 +695,9 @@ func run_enemy_turn() -> void:
 	turn_side = "hero"
 	round_number += 1
 	acted_units = {}
+	for unit in units:
+		unit.ap = unit.max_ap
+		unit.status.erase("overwatch")
 	select_next_ready_hero()
 	add_log("Turno de heroes.")
 	play_sfx("res://assets/audio/turn.wav")
@@ -534,7 +715,7 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 		var y = candidate[1]
 		if x < 0 or y < 0 or x >= 12 or y >= 9:
 			continue
-		if unit_at(x, y) >= 0 or cover_tiles.has("%s,%s" % [x, y]):
+		if is_blocked(x, y):
 			continue
 		var score = distance_xy(x, y, target.x, target.y)
 		if score < best_score:
@@ -545,6 +726,7 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 	enemy.y = best_y
 	add_log("%s se acerca." % enemy.name)
 	play_sfx("res://assets/audio/step.wav")
+	trigger_overwatch(enemy_index)
 
 func check_result() -> bool:
 	var heroes := units.filter(func(unit): return unit.side == "hero")
@@ -585,6 +767,84 @@ func distance_units(a: int, b: int) -> int:
 
 func distance_xy(ax: int, ay: int, bx: int, by: int) -> int:
 	return abs(ax - bx) + abs(ay - by)
+
+func mark_if_spent(unit: Dictionary) -> void:
+	if unit.ap <= 0:
+		acted_units[unit.id] = true
+
+func is_blocked(x: int, y: int) -> bool:
+	return unit_at(x, y) >= 0 or obstacle_tiles.has("%s,%s" % [x, y])
+
+func cover_penalty(x: int, y: int) -> int:
+	return 25 if cover_tiles.has("%s,%s" % [x, y]) else 0
+
+func has_line_of_sight(ax: int, ay: int, bx: int, by: int) -> bool:
+	var steps = max(abs(ax - bx), abs(ay - by))
+	if steps <= 1:
+		return true
+	for step in range(1, steps):
+		var t := float(step) / float(steps)
+		var x := roundi(lerp(float(ax), float(bx), t))
+		var y := roundi(lerp(float(ay), float(by), t))
+		if obstacle_tiles.has("%s,%s" % [x, y]):
+			return false
+	return true
+
+func find_path(start: Vector2i, goal: Vector2i, max_steps: int) -> Array:
+	if goal.x < 0 or goal.y < 0 or goal.x >= BOARD_W or goal.y >= BOARD_H:
+		return []
+	var frontier := [start]
+	var came_from := {start: start}
+	var cost := {start: 0}
+	while not frontier.is_empty():
+		var current: Vector2i = frontier.pop_front()
+		if current == goal:
+			break
+		for next in [Vector2i(current.x + 1, current.y), Vector2i(current.x - 1, current.y), Vector2i(current.x, current.y + 1), Vector2i(current.x, current.y - 1)]:
+			if next.x < 0 or next.y < 0 or next.x >= BOARD_W or next.y >= BOARD_H:
+				continue
+			if is_blocked(next.x, next.y) and next != goal:
+				continue
+			var new_cost := int(cost[current]) + 1
+			if new_cost > max_steps:
+				continue
+			if not cost.has(next) or new_cost < int(cost[next]):
+				cost[next] = new_cost
+				came_from[next] = current
+				frontier.append(next)
+	if not came_from.has(goal):
+		return []
+	var path := [goal]
+	var current := goal
+	while current != start:
+		current = came_from[current]
+		path.push_front(current)
+	return path
+
+func trigger_overwatch(enemy_index: int) -> void:
+	if enemy_index < 0 or enemy_index >= units.size():
+		return
+	var enemy = units[enemy_index]
+	for hero in units:
+		if hero.side == "hero" and hero.status.has("overwatch") and distance_xy(hero.x, hero.y, enemy.x, enemy.y) <= hero.range:
+			enemy.hp -= 2
+			hero.status.erase("overwatch")
+			add_log("%s dispara en overwatch." % hero.name)
+			play_sfx("res://assets/audio/shot.wav")
+			if enemy.hp <= 0:
+				add_log("%s cae." % enemy.name)
+				units.erase(enemy)
+			return
+
+func spawn_effect(x: int, y: int, _kind: String) -> void:
+	var effect = EFFECT_BURST.instantiate()
+	effect.position = iso_pos(x, y) + Vector2(0, -18)
+	effect.z_index = 900
+	battle_grid.add_child(effect)
+	var tween := create_tween()
+	tween.tween_property(effect, "scale", Vector2(1.7, 1.7), 0.18)
+	tween.parallel().tween_property(effect, "modulate:a", 0.0, 0.24)
+	tween.tween_callback(effect.queue_free)
 
 func add_log(text: String) -> void:
 	log_label.append_text(text + "\n")

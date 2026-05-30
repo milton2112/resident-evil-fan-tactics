@@ -1,32 +1,43 @@
-# Zona Cero Tactica - Godot
+# Zona Cero Tactica
 
-Juego fan tactico por turnos inspirado en survival horror: escuadron humano contra infectados, vista 2.5D isometrica y combate por rondas.
+Prototipo fan no comercial de tactica por turnos y survival horror, hecho en Godot 4.6.
 
-## Como probar
+## Jugar
+
+### Opcion 1: Godot
 
 1. Abrir Godot 4.6 o superior.
 2. Elegir `Import`.
 3. Seleccionar `godot/project.godot`.
-4. Cuando aparezca en la lista de proyectos, abrirlo y tocar `Run` o presionar `F5`.
+4. Presionar `F5`.
 
-Ruta local del proyecto:
+### Opcion 2: Builds
 
-`C:\Users\deren\OneDrive\Escritorio\Cursos\Resident Evil\godot\project.godot`
+Las builds se generan en `godot/dist` cuando estan instaladas las export templates de Godot:
 
-Repo:
+- Web: `godot/dist/web/index.html`
+- Windows: `godot/dist/windows/ZonaCeroTactica.exe`
 
-https://github.com/milton2112/resident-evil-fan-tactics
+## Estado actual
 
-## Controles actuales
+- Sprites recortados desde hoja visual de referencia.
+- Mapas distintos por mision desde `godot/data/game_data.json`.
+- Escenas reutilizables para unidad, tile, prop, puerta, obstaculo y efectos.
+- Combate con movimiento por pathfinding, obstaculos, puertas, cobertura, linea de vision, AP, granadas, curacion, criticos, overwatch basico y roles enemigos.
+- UI de menu, selector de faccion/mision, panel de unidad, log de combate y pantalla de titulo.
+- Audio base para musica, UI, disparos, pasos, golpes y victoria/derrota.
+- Presets de exportacion Web y Windows.
 
-- Seleccionar una unidad humana desde el tablero o el panel lateral.
-- Usar `Mover` y tocar una casilla azul dentro del rango.
-- Usar `Atacar` y tocar un enemigo dentro del rango rojo.
-- Usar `Esperar` para gastar la accion de una unidad.
-- Usar `Terminar turno` para que jueguen los enemigos.
-- La IA enemiga avanza hacia los heroes y ataca si queda en rango.
-- La partida termina cuando caen todos los enemigos o todos los heroes.
+## Controles
 
-## Estado
+- Click en una unidad para seleccionarla.
+- `Mover`: click en una casilla valida.
+- `Atacar`: click en un enemigo con linea de vision y rango.
+- `Granada`: ataque de area.
+- `Curar`: cura a una unidad aliada adyacente.
+- `Overwatch`: guarda la accion y dispara si un enemigo se acerca.
+- `Terminar turno`: pasa a la IA enemiga.
 
-La version web fue removida para dejar el proyecto centrado en Godot. Los assets utiles quedaron dentro de `godot/assets`.
+## Aviso legal
+
+Este proyecto es un prototipo fan no comercial. No usa logos oficiales y debe mantenerse como obra original inspirada en survival horror tactico si se comparte publicamente.

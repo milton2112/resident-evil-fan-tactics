@@ -1,1 +1,4 @@
 godot/.godot/
+godot/dist/
+*.zip
+*.tpz

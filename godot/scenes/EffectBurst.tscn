@@ -1,0 +1,11 @@
+[gd_scene format=3]
+
+[node name="EffectBurst" type="Node2D"]
+
+[node name="Ring" type="Polygon2D" parent="."]
+color = Color(1, 0.415686, 0.301961, 0.42)
+polygon = PackedVector2Array(0, -24, 24, 0, 0, 24, -24, 0)
+
+[node name="Core" type="Polygon2D" parent="."]
+color = Color(0.74902, 0.839216, 0.435294, 0.68)
+polygon = PackedVector2Array(0, -12, 12, 0, 0, 12, -12, 0)
