@@ -18,6 +18,7 @@
           <div class="mission-status">
             <span id="roundLabel">Ronda 1</span>
             <strong id="turnLabel">Turno de heroes</strong>
+            <span id="campaignLabel">Campaña sin guardar</span>
           </div>
         </header>
 
@@ -64,9 +65,8 @@
 
         <section class="panel-block">
           <h2>Objetivo</h2>
-          <p class="briefing">
-            Limpia la zona infectada antes de que el brote alcance el puesto de extraccion.
-          </p>
+          <p id="objectiveText" class="briefing">Limpia la zona infectada antes de que el brote alcance el puesto de extraccion.</p>
+          <div id="objectiveStats" class="objective-stats"></div>
           <div id="log" class="log" aria-live="polite"></div>
         </section>
       </aside>
@@ -76,6 +76,7 @@
       <section class="start-card">
         <p class="eyebrow">Fan prototype no comercial</p>
         <h2 id="startTitle">Elige una faccion</h2>
+        <div id="campaignSummary" class="campaign-summary"></div>
         <div class="faction-grid">
           <button class="faction-card is-selected" type="button" data-faction="bsaa">
             <strong>BSAA</strong>
@@ -105,7 +106,15 @@
             <div id="bowRoster" class="bow-roster"></div>
           </div>
         </div>
+        <section class="mission-picker" aria-label="Seleccion de mision">
+          <div>
+            <h3>Mision</h3>
+            <p id="missionBrief">Elige una zona de brote para empezar.</p>
+          </div>
+          <div id="missionList" class="mission-list"></div>
+        </section>
         <div class="start-actions">
+          <button id="resetProgressBtn" class="action-btn" type="button">Reiniciar progreso</button>
           <button id="startBtn" class="action-btn action-btn-primary" type="button">Iniciar mision</button>
         </div>
       </section>
@@ -115,7 +124,11 @@
       <div class="modal-card">
         <h2 id="resultTitle"></h2>
         <p id="resultText"></p>
-        <button id="restartBtn" class="action-btn action-btn-primary" type="button">Reiniciar mision</button>
+        <div class="modal-actions">
+          <button id="menuBtn" class="action-btn" type="button">Volver al menu</button>
+          <button id="restartBtn" class="action-btn" type="button">Reintentar</button>
+          <button id="nextMissionBtn" class="action-btn action-btn-primary" type="button">Siguiente mision</button>
+        </div>
       </div>
     </div>
 

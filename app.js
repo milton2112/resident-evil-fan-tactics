@@ -103,6 +103,60 @@ const playerSpawn = [
   [3, 6]
 ];
 
+const missions = [
+  {
+    id: "raccoon-outskirts",
+    name: "Afueras de Raccoon City",
+    briefing: "Contener el brote inicial y recuperar el punto de extraccion.",
+    rewardCredits: 180000,
+    rewardResearch: 2,
+    enemyRoster,
+    responseRoster
+  },
+  {
+    id: "penamstan-port",
+    name: "Puerto de Penamstan",
+    briefing: "Entrar al puerto, cortar la ruta de infeccion y eliminar hostiles rapidos.",
+    rewardCredits: 260000,
+    rewardResearch: 3,
+    enemyRoster: [
+      ["e1", "Zombie", 10, 1, 8, 3],
+      ["e2", "Ganado", 8, 2, 9, 3],
+      ["e3", "Perro infectado", 10, 5, 7, 5],
+      ["e4", "Licker", 8, 7, 12, 4],
+      ["e5", "Brute", 11, 6, 14, 2]
+    ],
+    responseRoster: [
+      ["e1", "Leon", 10, 1, 11, 4],
+      ["e2", "Claire", 9, 3, 9, 4],
+      ["e3", "Agente DSO", 10, 5, 9, 4],
+      ["e4", "Tirador", 8, 7, 8, 4],
+      ["e5", "Capitan", 11, 7, 12, 3]
+    ]
+  },
+  {
+    id: "valdelobos-night",
+    name: "Valdelobos de noche",
+    briefing: "Sobrevivir a una zona hostil y neutralizar al enemigo pesado.",
+    rewardCredits: 380000,
+    rewardResearch: 5,
+    enemyRoster: [
+      ["e1", "Ganado", 10, 1, 10, 3],
+      ["e2", "Ganado", 9, 3, 10, 3],
+      ["e3", "Colmillo", 10, 5, 8, 5],
+      ["e4", "Licker", 8, 7, 13, 4],
+      ["e5", "Tyrant fallido", 11, 7, 20, 2]
+    ],
+    responseRoster: [
+      ["e1", "Chris", 10, 1, 13, 4],
+      ["e2", "Jill", 9, 3, 11, 5],
+      ["e3", "Leon", 10, 5, 11, 4],
+      ["e4", "Hound Wolf", 8, 7, 10, 5],
+      ["e5", "Especialista", 11, 7, 12, 4]
+    ]
+  }
+];
+
 let state;
 
 const battlefield = document.querySelector("#battlefield");
@@ -112,6 +166,8 @@ const missionLabel = document.querySelector("#missionLabel");
 const squadTitle = document.querySelector("#squadTitle");
 const selectedUnitStats = document.querySelector("#selectedUnitStats");
 const unitPanel = document.querySelector("#unitPanel");
+const objectiveText = document.querySelector("#objectiveText");
+const objectiveStats = document.querySelector("#objectiveStats");
 const logEl = document.querySelector("#log");
 const resultModal = document.querySelector("#resultModal");
 const resultTitle = document.querySelector("#resultTitle");
@@ -122,6 +178,13 @@ const bowBuilder = document.querySelector("#bowBuilder");
 const bowShopEl = document.querySelector("#bowShop");
 const bowRosterEl = document.querySelector("#bowRoster");
 const budgetLabel = document.querySelector("#budgetLabel");
+const campaignLabel = document.querySelector("#campaignLabel");
+const campaignSummary = document.querySelector("#campaignSummary");
+const missionBrief = document.querySelector("#missionBrief");
+const missionList = document.querySelector("#missionList");
+const resetProgressBtn = document.querySelector("#resetProgressBtn");
+const menuBtn = document.querySelector("#menuBtn");
+const nextMissionBtn = document.querySelector("#nextMissionBtn");
 
 const actionButtons = {
   move: document.querySelector("#moveBtn"),
@@ -132,18 +195,21 @@ const actionButtons = {
 };
 
 let selectedFaction = "bsaa";
+let selectedMissionIndex = 0;
 let selectedBows = defaultBowRoster();
 let bowBudget = getRemainingBudget(selectedBows);
+let campaign = loadCampaign();
 
 function newGame(factionId = selectedFaction) {
   selectedFaction = factions[factionId] ? factionId : "bsaa";
   const faction = factions[selectedFaction];
+  const mission = missions[selectedMissionIndex] || missions[0];
   const playerUnits = faction.economy ? buildUmbrellaUnits() : faction.units.map(([id, name, x, y, hp, move]) => {
     return unit(id, name, "hero", x, y, hp, move, "hero");
   });
-  const opponents = faction.economy ? responseRoster.map(([id, name, x, y, hp, move]) => {
+  const opponents = faction.economy ? mission.responseRoster.map(([id, name, x, y, hp, move]) => {
     return unit(id, name, "enemy", x, y, hp, move, "hero");
-  }) : enemyRoster.map(([id, name, x, y, hp, move]) => {
+  }) : mission.enemyRoster.map(([id, name, x, y, hp, move]) => {
     return unit(id, name, "enemy", x, y, hp, move, "infected");
   });
 
@@ -154,12 +220,15 @@ function newGame(factionId = selectedFaction) {
     selectedId: "h1",
     selectedWeapon: "pistol",
     factionId: selectedFaction,
+    missionIndex: selectedMissionIndex,
     specialUsed: false,
+    completed: false,
     log: [],
     units: [...playerUnits, ...opponents]
   };
 
-  addLog(`${faction.name} desplegado. Objetivo: contener el brote.`);
+  addLog(`${faction.name} desplegado en ${mission.name}.`);
+  addLog(mission.briefing);
   resultModal.classList.add("is-hidden");
   startScreen.classList.add("is-hidden");
   render();
@@ -184,13 +253,16 @@ function unit(id, name, side, x, y, hp, move, role = "hero") {
 
 function render() {
   const faction = factions[state.factionId];
+  const mission = missions[state.missionIndex];
   roundLabel.textContent = `Ronda ${state.round}`;
   turnLabel.textContent = state.side === "hero" ? "Turno de heroes" : "Turno de infectados";
-  missionLabel.textContent = faction.mission;
+  missionLabel.textContent = mission.name;
+  campaignLabel.textContent = `${faction.name}: ${getFactionProgress(state.factionId).wins} victoria(s)`;
   squadTitle.textContent = `Escuadron ${faction.name}`;
   renderBoard();
   renderPanel();
   renderLog();
+  renderObjective();
   updateButtons();
 }
 
@@ -254,7 +326,7 @@ function renderPanel() {
   selectedUnitStats.innerHTML = selected
     ? `
       <strong>${selected.name}</strong>
-      <span>${selected.acted ? "Ya actuo este turno" : "Lista para actuar"} · ${currentWeapons[state.selectedWeapon].name}</span>
+      <span>${selected.acted ? "Ya actuo este turno" : "Lista para actuar"} - ${currentWeapons[state.selectedWeapon].name}</span>
       <div class="stat-row">
         <span class="stat-pill">Vida ${selected.hp}/${selected.maxHp}</span>
         <span class="stat-pill">Mov ${selected.move}</span>
@@ -290,6 +362,18 @@ function renderLog() {
     p.textContent = entry;
     logEl.appendChild(p);
   });
+}
+
+function renderObjective() {
+  const mission = missions[state.missionIndex];
+  const enemiesLeft = state.units.filter((unitData) => unitData.side === "enemy" && unitData.hp > 0).length;
+  const alliesLeft = state.units.filter((unitData) => unitData.side === "hero" && unitData.hp > 0).length;
+  objectiveText.textContent = mission.briefing;
+  objectiveStats.innerHTML = `
+    <span class="objective-chip"><strong>${enemiesLeft}</strong>hostiles</span>
+    <span class="objective-chip"><strong>${alliesLeft}</strong>aliados</span>
+    <span class="objective-chip"><strong>${formatMoney(mission.rewardCredits)}</strong>recompensa</span>
+  `;
 }
 
 function updateButtons() {
@@ -453,7 +537,8 @@ function checkWinLoss() {
   const enemiesLeft = state.units.some((unitData) => unitData.side === "enemy" && unitData.hp > 0);
 
   if (!enemiesLeft) {
-    showResult("Zona despejada", "El escuadron contuvo el brote. Siguiente paso: agregar recompensas y nuevas misiones.");
+    const reward = completeMission();
+    showResult("Zona despejada", `Victoria en ${missions[state.missionIndex].name}. Recompensa: ${formatMoney(reward.credits)} y ${reward.research} datos de investigacion.`);
     return true;
   }
 
@@ -468,8 +553,23 @@ function checkWinLoss() {
 function showResult(title, text) {
   resultTitle.textContent = title;
   resultText.textContent = text;
+  nextMissionBtn.disabled = state.missionIndex >= missions.length - 1;
   resultModal.classList.remove("is-hidden");
   render();
+}
+
+function completeMission() {
+  if (state.completed) return { credits: 0, research: 0 };
+  const mission = missions[state.missionIndex];
+  const progress = getFactionProgress(state.factionId);
+  progress.wins += 1;
+  progress.credits += mission.rewardCredits;
+  progress.research += mission.rewardResearch;
+  progress.unlockedMission = Math.max(progress.unlockedMission, Math.min(state.missionIndex + 1, missions.length - 1));
+  progress.bestRounds[mission.id] = Math.min(progress.bestRounds[mission.id] || 99, state.round);
+  state.completed = true;
+  saveCampaign();
+  return { credits: mission.rewardCredits, research: mission.rewardResearch };
 }
 
 function getHighlights(selected) {
@@ -518,7 +618,7 @@ function renderBowBuilder() {
     button.disabled = bowBudget < item.cost || selectedBows.length >= playerSpawn.length;
     button.innerHTML = `
       <strong>${item.name}</strong>
-      <span>${formatMoney(item.cost)} · Vida ${item.hp} · Mov ${item.move}</span>
+      <span>${formatMoney(item.cost)} - Vida ${item.hp} - Mov ${item.move}</span>
     `;
     button.addEventListener("click", () => buyBow(item.id));
     bowShopEl.appendChild(button);
@@ -561,6 +661,71 @@ function getRemainingBudget(roster) {
 
 function formatMoney(value) {
   return `$${value.toLocaleString("es-AR")}`;
+}
+
+function getFactionProgress(factionId = selectedFaction) {
+  if (!campaign[factionId]) {
+    campaign[factionId] = { wins: 0, credits: 0, research: 0, unlockedMission: 0, bestRounds: {} };
+  }
+  return campaign[factionId];
+}
+
+function loadCampaign() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("reFanTacticsCampaign") || "{}");
+    return saved && typeof saved === "object" ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCampaign() {
+  localStorage.setItem("reFanTacticsCampaign", JSON.stringify(campaign));
+}
+
+function resetCampaignProgress() {
+  campaign[selectedFaction] = { wins: 0, credits: 0, research: 0, unlockedMission: 0, bestRounds: {} };
+  saveCampaign();
+  selectedMissionIndex = 0;
+  renderStartScreen();
+}
+
+function renderStartScreen() {
+  const progress = getFactionProgress(selectedFaction);
+  campaignSummary.innerHTML = `
+    <span class="campaign-chip"><strong>${progress.wins}</strong>victorias</span>
+    <span class="campaign-chip"><strong>${formatMoney(progress.credits)}</strong>creditos</span>
+    <span class="campaign-chip"><strong>${progress.research}</strong>investigacion</span>
+  `;
+
+  if (selectedMissionIndex > progress.unlockedMission) selectedMissionIndex = progress.unlockedMission;
+  missionList.innerHTML = "";
+  missions.forEach((mission, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "mission-card";
+    button.disabled = index > progress.unlockedMission;
+    button.classList.toggle("is-selected", index === selectedMissionIndex);
+    const best = progress.bestRounds[mission.id] ? `Mejor: ${progress.bestRounds[mission.id]} ronda(s)` : "Sin completar";
+    button.innerHTML = `
+      <strong>${mission.name}</strong>
+      <span>${index > progress.unlockedMission ? "Bloqueada" : best} - ${formatMoney(mission.rewardCredits)} - ${mission.rewardResearch} investigacion</span>
+    `;
+    button.addEventListener("click", () => {
+      if (button.disabled) return;
+      selectedMissionIndex = index;
+      renderStartScreen();
+    });
+    missionList.appendChild(button);
+  });
+  missionBrief.textContent = missions[selectedMissionIndex].briefing;
+  renderBowBuilder();
+}
+
+function showStartScreen() {
+  resultModal.classList.add("is-hidden");
+  startScreen.classList.remove("is-hidden");
+  renderStartScreen();
 }
 
 function getSelectedUnit() {
@@ -623,12 +788,19 @@ actionButtons.wait.addEventListener("click", () => {
 
 actionButtons.end.addEventListener("click", startEnemyTurn);
 document.querySelector("#restartBtn").addEventListener("click", () => newGame(state.factionId));
+menuBtn.addEventListener("click", showStartScreen);
+nextMissionBtn.addEventListener("click", () => {
+  selectedMissionIndex = Math.min(state.missionIndex + 1, missions.length - 1);
+  newGame(state.factionId);
+});
+resetProgressBtn.addEventListener("click", resetCampaignProgress);
 
 document.querySelectorAll(".faction-card").forEach((button) => {
   button.addEventListener("click", () => {
     selectedFaction = button.dataset.faction;
+    selectedMissionIndex = Math.min(selectedMissionIndex, getFactionProgress(selectedFaction).unlockedMission);
     addStartSelection(button);
-    renderBowBuilder();
+    renderStartScreen();
   });
 });
 
@@ -642,4 +814,4 @@ startBtn.addEventListener("click", () => newGame(selectedFaction));
 
 newGame("bsaa");
 startScreen.classList.remove("is-hidden");
-renderBowBuilder();
+renderStartScreen();
