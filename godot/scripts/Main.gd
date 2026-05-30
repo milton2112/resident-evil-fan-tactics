@@ -142,13 +142,13 @@ func start_battle() -> void:
 
 func build_units() -> Array:
 	return [
-		{"id": "h1", "name": "Chris", "side": "hero", "x": 1, "y": 1, "hp": 12, "max_hp": 12, "move": 4, "damage": 3, "range": 4, "sprite": "soldier.svg"},
-		{"id": "h2", "name": "Jill", "side": "hero", "x": 1, "y": 3, "hp": 10, "max_hp": 10, "move": 5, "damage": 3, "range": 4, "sprite": "agent.svg"},
-		{"id": "h3", "name": "Leon", "side": "hero", "x": 1, "y": 5, "hp": 10, "max_hp": 10, "move": 4, "damage": 4, "range": 5, "sprite": "agent.svg"},
-		{"id": "e1", "name": "Zombie", "side": "enemy", "x": 10, "y": 1, "hp": 7, "max_hp": 7, "move": 3, "damage": 2, "range": 1, "sprite": "zombie.svg"},
-		{"id": "e2", "name": "Cerberus", "side": "enemy", "x": 9, "y": 3, "hp": 6, "max_hp": 6, "move": 5, "damage": 2, "range": 1, "sprite": "cerberus.svg"},
-		{"id": "e3", "name": "Licker", "side": "enemy", "x": 10, "y": 5, "hp": 12, "max_hp": 12, "move": 4, "damage": 3, "range": 1, "sprite": "licker.svg"},
-		{"id": "e4", "name": "Tyrant", "side": "enemy", "x": 11, "y": 7, "hp": 18, "max_hp": 18, "move": 2, "damage": 4, "range": 1, "sprite": "tyrant.svg"}
+		{"id": "h1", "name": "Chris", "side": "hero", "x": 1, "y": 1, "hp": 12, "max_hp": 12, "move": 4, "damage": 3, "range": 4, "sprite": "soldier.svg", "art": "chris.png"},
+		{"id": "h2", "name": "Jill", "side": "hero", "x": 1, "y": 3, "hp": 10, "max_hp": 10, "move": 5, "damage": 3, "range": 4, "sprite": "agent.svg", "art": "jill.png"},
+		{"id": "h3", "name": "Leon", "side": "hero", "x": 1, "y": 5, "hp": 10, "max_hp": 10, "move": 4, "damage": 4, "range": 5, "sprite": "agent.svg", "art": "leon.png"},
+		{"id": "e1", "name": "Zombie", "side": "enemy", "x": 10, "y": 1, "hp": 7, "max_hp": 7, "move": 3, "damage": 2, "range": 1, "sprite": "zombie.svg", "art": "zombie.png"},
+		{"id": "e2", "name": "Cerberus", "side": "enemy", "x": 9, "y": 3, "hp": 6, "max_hp": 6, "move": 5, "damage": 2, "range": 1, "sprite": "cerberus.svg", "art": "cerberus.png"},
+		{"id": "e3", "name": "Licker", "side": "enemy", "x": 10, "y": 5, "hp": 12, "max_hp": 12, "move": 4, "damage": 3, "range": 1, "sprite": "licker.svg", "art": "licker.png"},
+		{"id": "e4", "name": "Tyrant", "side": "enemy", "x": 11, "y": 7, "hp": 18, "max_hp": 18, "move": 2, "damage": 4, "range": 1, "sprite": "tyrant.svg", "art": "tyrant.png"}
 	]
 
 func render_factions() -> void:
@@ -243,10 +243,10 @@ func draw_tile(x: int, y: int) -> void:
 	shadow.polygon = diamond_points(TILE_W, TILE_H)
 	shadow.color = Color(0, 0, 0, 0.28)
 	holder.add_child(shadow)
-	var body := Polygon2D.new()
-	body.polygon = diamond_points(TILE_W, TILE_H)
-	body.color = get_tile_color(x, y)
-	holder.add_child(body)
+	var tile_sprite := Sprite2D.new()
+	tile_sprite.texture = load(tile_art_path(x, y))
+	tile_sprite.scale = Vector2(0.5, 0.5)
+	holder.add_child(tile_sprite)
 	var highlight := Line2D.new()
 	highlight.points = PackedVector2Array([Vector2(0, -TILE_H / 2.0), Vector2(TILE_W / 2.0, 0), Vector2(0, TILE_H / 2.0), Vector2(-TILE_W / 2.0, 0), Vector2(0, -TILE_H / 2.0)])
 	highlight.width = 1.4
@@ -265,23 +265,29 @@ func draw_tile(x: int, y: int) -> void:
 	)
 	holder.add_child(hitbox)
 
+func tile_art_path(x: int, y: int) -> String:
+	var key := "%s,%s" % [x, y]
+	if cover_tiles.has(key):
+		return "res://assets/painted/tiles/cover_tile.png"
+	if selected_unit >= 0 and selected_unit < units.size() and units[selected_unit].side == "hero":
+		var unit = units[selected_unit]
+		var d := distance_xy(unit.x, unit.y, x, y)
+		if current_mode == "move" and d <= unit.move:
+			return "res://assets/painted/tiles/move_tile.png"
+		if current_mode == "attack" and d <= unit.range:
+			return "res://assets/painted/tiles/attack_tile.png"
+	return "res://assets/painted/tiles/floor_lab.png" if (x + y) % 2 == 0 else "res://assets/painted/tiles/floor_lab_alt.png"
+
 func diamond_points(width: float, height: float) -> PackedVector2Array:
 	return PackedVector2Array([Vector2(0, -height / 2.0), Vector2(width / 2.0, 0), Vector2(0, height / 2.0), Vector2(-width / 2.0, 0)])
 
 func draw_cover_prop(holder: Node2D) -> void:
-	var prop := Polygon2D.new()
-	prop.position = Vector2(0, -18)
-	prop.polygon = PackedVector2Array([Vector2(-20, 4), Vector2(0, -22), Vector2(22, 4), Vector2(14, 23), Vector2(-16, 21)])
-	prop.color = Color("#566142")
+	var prop := Sprite2D.new()
+	prop.texture = load("res://assets/painted/props/cover_crate.png")
+	prop.position = Vector2(0, -20)
+	prop.scale = Vector2(0.62, 0.62)
 	prop.z_index = 5
 	holder.add_child(prop)
-	var rim := Line2D.new()
-	rim.position = prop.position
-	rim.points = PackedVector2Array([Vector2(-20, 4), Vector2(0, -22), Vector2(22, 4), Vector2(14, 23), Vector2(-16, 21), Vector2(-20, 4)])
-	rim.width = 2
-	rim.default_color = Color(1, 1, 1, 0.18)
-	rim.z_index = 6
-	holder.add_child(rim)
 
 func draw_unit(unit: Dictionary, index: int) -> void:
 	var holder := Node2D.new()
@@ -295,25 +301,11 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 	shadow.color = Color(0, 0, 0, 0.34)
 	holder.add_child(shadow)
 	var accent: Color = COLORS.hero if unit.side == "hero" else COLORS.enemy
-	var body := Polygon2D.new()
-	body.polygon = unit_body_points(unit)
-	body.color = accent.darkened(0.18) if unit.side == "hero" else Color("#7d3028")
-	holder.add_child(body)
-	var vest := Polygon2D.new()
-	vest.position = Vector2(0, 6)
-	vest.polygon = PackedVector2Array([Vector2(-15, -14), Vector2(15, -14), Vector2(19, 16), Vector2(0, 28), Vector2(-19, 16)])
-	vest.color = accent
-	holder.add_child(vest)
-	var head := Polygon2D.new()
-	head.position = Vector2(0, -25)
-	head.polygon = PackedVector2Array([Vector2(-11, -8), Vector2(8, -11), Vector2(14, 3), Vector2(6, 15), Vector2(-10, 12), Vector2(-15, 0)])
-	head.color = Color("#d8c5a0") if unit.side == "hero" else Color("#9ab05d")
-	holder.add_child(head)
-	var weapon := Line2D.new()
-	weapon.points = PackedVector2Array([Vector2(12, -2), Vector2(36, -12)])
-	weapon.width = 4
-	weapon.default_color = Color("#d9d6c0") if unit.side == "hero" else Color("#3a1c18")
-	holder.add_child(weapon)
+	var unit_sprite := Sprite2D.new()
+	unit_sprite.texture = load("res://assets/painted/units/%s" % unit.art)
+	unit_sprite.position = Vector2(0, -14)
+	unit_sprite.scale = Vector2(0.78, 0.78)
+	holder.add_child(unit_sprite)
 	var hp_bg := ColorRect.new()
 	hp_bg.position = Vector2(-22, 36)
 	hp_bg.size = Vector2(44, 5)
