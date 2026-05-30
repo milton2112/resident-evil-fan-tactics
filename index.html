@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Prototipo - Zona Cero Tactica</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game-stage" aria-label="Campo de combate tactico">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Prototipo 2.5D jugable</p>
+            <h1>Zona Cero Tactica</h1>
+            <p id="missionLabel" class="mission-label">Incidente en las afueras de Raccoon City</p>
+          </div>
+          <div class="mission-status">
+            <span id="roundLabel">Ronda 1</span>
+            <strong id="turnLabel">Turno de heroes</strong>
+          </div>
+        </header>
+
+        <section class="battlefield-wrap">
+          <div class="iso-scene" aria-label="Escena tactica 2.5D">
+            <div class="scene-backdrop"></div>
+            <div id="battlefield" class="battlefield" role="grid" aria-label="Tablero tactico isometrico"></div>
+          </div>
+        </section>
+
+        <footer class="actionbar" aria-label="Acciones">
+          <button id="moveBtn" class="action-btn is-active" type="button">Mover</button>
+          <button id="attackBtn" class="action-btn" type="button">Atacar</button>
+          <button id="specialBtn" class="action-btn" type="button">Especial</button>
+          <button id="waitBtn" class="action-btn" type="button">Esperar</button>
+          <button id="endTurnBtn" class="action-btn action-btn-primary" type="button">Terminar turno</button>
+        </footer>
+      </section>
+
+      <aside class="side-panel" aria-label="Panel tactico">
+        <section class="panel-block">
+          <h2 id="squadTitle">Escuadron</h2>
+          <div id="selectedUnitStats" class="selected-unit-stats"></div>
+          <div id="unitPanel" class="unit-panel"></div>
+        </section>
+
+        <section class="panel-block">
+          <h2>Armas</h2>
+          <div class="weapon-list">
+            <button class="weapon-card is-selected" type="button" data-weapon="pistol">
+              <span>Pistola</span>
+              <strong>3 dano / 4 casillas</strong>
+            </button>
+            <button class="weapon-card" type="button" data-weapon="shotgun">
+              <span>Escopeta</span>
+              <strong>5 dano / 2 casillas</strong>
+            </button>
+            <button class="weapon-card" type="button" data-weapon="rifle">
+              <span>Rifle</span>
+              <strong>4 dano / 6 casillas</strong>
+            </button>
+          </div>
+        </section>
+
+        <section class="panel-block">
+          <h2>Objetivo</h2>
+          <p class="briefing">
+            Limpia la zona infectada antes de que el brote alcance el puesto de extraccion.
+          </p>
+          <div id="log" class="log" aria-live="polite"></div>
+        </section>
+      </aside>
+    </main>
+
+    <div id="startScreen" class="start-screen" role="dialog" aria-modal="true" aria-labelledby="startTitle">
+      <section class="start-card">
+        <p class="eyebrow">Fan prototype no comercial</p>
+        <h2 id="startTitle">Elige una faccion</h2>
+        <div class="faction-grid">
+          <button class="faction-card is-selected" type="button" data-faction="bsaa">
+            <strong>BSAA</strong>
+            <span>Escuadron equilibrado, especialista en contencion biologica.</span>
+          </button>
+          <button class="faction-card" type="button" data-faction="dso">
+            <strong>DSO</strong>
+            <span>Menos vida, mas alcance y dano critico con armas de precision.</span>
+          </button>
+          <button class="faction-card" type="button" data-faction="houndwolf">
+            <strong>Hound Wolf</strong>
+            <span>Equipo agresivo con mas movilidad y habilidad explosiva.</span>
+          </button>
+          <button class="faction-card is-locked" type="button" data-faction="umbrella">
+            <strong>Umbrella</strong>
+            <span>Campana B.O.W. y economia corporativa. Proxima mejora.</span>
+          </button>
+        </div>
+        <div class="start-actions">
+          <button id="startBtn" class="action-btn action-btn-primary" type="button">Iniciar mision</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="resultModal" class="modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+      <div class="modal-card">
+        <h2 id="resultTitle"></h2>
+        <p id="resultText"></p>
+        <button id="restartBtn" class="action-btn action-btn-primary" type="button">Reiniciar mision</button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
