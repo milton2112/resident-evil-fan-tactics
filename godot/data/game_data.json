@@ -30,6 +30,7 @@
       "name": "Afueras de Raccoon City",
       "briefing": "Contener el brote inicial y recuperar el punto de extraccion.",
       "objective": "eliminate",
+      "turnLimit": 10,
       "rewardCredits": 180000,
       "rewardResearch": 2,
       "map": {
@@ -38,9 +39,9 @@
         "obstacles": ["6,2", "6,3", "10,6"],
         "doors": ["8,2"],
         "heroes": [
-          { "id": "h1", "name": "Chris", "x": 1, "y": 1, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault" },
-          { "id": "h2", "name": "Jill", "x": 1, "y": 3, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout" },
-          { "id": "h3", "name": "Leon", "x": 1, "y": 5, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman" }
+          { "id": "h1", "name": "Chris", "x": 1, "y": 1, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault", "loadout": { "pistol": 12, "shotgun": 6, "rifle": 4, "grenade": 1, "medkit": 1 } },
+          { "id": "h2", "name": "Jill", "x": 1, "y": 3, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout", "loadout": { "pistol": 14, "shotgun": 4, "rifle": 4, "grenade": 1, "medkit": 2 } },
+          { "id": "h3", "name": "Leon", "x": 1, "y": 5, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman", "loadout": { "pistol": 10, "shotgun": 3, "rifle": 8, "grenade": 1, "medkit": 1 } }
         ],
         "enemies": [
           { "id": "e1", "name": "Shambler", "x": 10, "y": 1, "hp": 7, "move": 3, "damage": 2, "range": 1, "art": "zombie.png", "role": "slow" },
@@ -54,6 +55,7 @@
       "name": "Puerto de Penamstan",
       "briefing": "Entrar al puerto, cortar la ruta de infeccion y eliminar hostiles rapidos.",
       "objective": "activate",
+      "turnLimit": 9,
       "rewardCredits": 260000,
       "rewardResearch": 3,
       "map": {
@@ -61,10 +63,11 @@
         "cover": ["3,2", "4,2", "7,2", "8,3", "4,5", "7,6", "9,6"],
         "obstacles": ["5,1", "5,2", "5,3", "2,6", "10,4"],
         "doors": ["6,4", "9,2"],
+        "objectives": ["8,2"],
         "heroes": [
-          { "id": "h1", "name": "Chris", "x": 1, "y": 2, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault" },
-          { "id": "h2", "name": "Jill", "x": 1, "y": 4, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout" },
-          { "id": "h3", "name": "Leon", "x": 2, "y": 6, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman" }
+          { "id": "h1", "name": "Chris", "x": 1, "y": 2, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault", "loadout": { "pistol": 10, "shotgun": 6, "rifle": 4, "grenade": 1, "medkit": 1 } },
+          { "id": "h2", "name": "Jill", "x": 1, "y": 4, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout", "loadout": { "pistol": 14, "shotgun": 4, "rifle": 4, "grenade": 1, "medkit": 2 } },
+          { "id": "h3", "name": "Leon", "x": 2, "y": 6, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman", "loadout": { "pistol": 10, "shotgun": 3, "rifle": 8, "grenade": 1, "medkit": 1 } }
         ],
         "enemies": [
           { "id": "e1", "name": "Runner", "x": 9, "y": 1, "hp": 6, "move": 5, "damage": 2, "range": 1, "art": "cerberus.png", "role": "runner" },
@@ -78,6 +81,7 @@
       "name": "Valdelobos de noche",
       "briefing": "Sobrevivir a una zona hostil y neutralizar al enemigo pesado.",
       "objective": "boss",
+      "turnLimit": 12,
       "rewardCredits": 380000,
       "rewardResearch": 5,
       "map": {
@@ -86,9 +90,9 @@
         "obstacles": ["5,1", "5,5", "7,3", "10,2", "10,3"],
         "doors": ["4,6", "8,2"],
         "heroes": [
-          { "id": "h1", "name": "Chris", "x": 1, "y": 1, "hp": 13, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault" },
-          { "id": "h2", "name": "Jill", "x": 1, "y": 4, "hp": 11, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout" },
-          { "id": "h3", "name": "Leon", "x": 2, "y": 6, "hp": 11, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman" }
+          { "id": "h1", "name": "Chris", "x": 1, "y": 1, "hp": 13, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault", "loadout": { "pistol": 12, "shotgun": 7, "rifle": 4, "grenade": 2, "medkit": 1 } },
+          { "id": "h2", "name": "Jill", "x": 1, "y": 4, "hp": 11, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout", "loadout": { "pistol": 14, "shotgun": 4, "rifle": 5, "grenade": 1, "medkit": 2 } },
+          { "id": "h3", "name": "Leon", "x": 2, "y": 6, "hp": 11, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman", "loadout": { "pistol": 10, "shotgun": 3, "rifle": 10, "grenade": 1, "medkit": 1 } }
         ],
         "enemies": [
           { "id": "e1", "name": "Brute", "x": 10, "y": 2, "hp": 20, "move": 2, "damage": 4, "range": 1, "art": "tyrant.png", "role": "boss" },

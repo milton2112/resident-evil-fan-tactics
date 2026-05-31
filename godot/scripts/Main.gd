@@ -52,6 +52,9 @@ var active_map := {}
 var battle_over := false
 var battle_result := ""
 var reward_claimed := false
+var mission_turn_limit := 10
+var objective_activated := false
+var objective_tiles := {}
 
 @onready var title_screen: Control = %TitleScreen
 @onready var start_screen: Control = %StartScreen
@@ -186,10 +189,13 @@ func start_battle() -> void:
 	battle_over = false
 	battle_result = ""
 	reward_claimed = false
+	objective_activated = false
 	active_map = data.missions[selected_mission].get("map", {})
+	mission_turn_limit = int(data.missions[selected_mission].get("turnLimit", 10))
 	cover_tiles = active_map.get("cover", [])
 	obstacle_tiles = array_to_lookup(active_map.get("obstacles", []))
 	door_tiles = array_to_lookup(active_map.get("doors", []))
+	objective_tiles = array_to_lookup(active_map.get("objectives", []))
 	units = build_units()
 	log_label.clear()
 	render_battle()
@@ -233,9 +239,30 @@ func make_unit(raw: Dictionary, side: String) -> Dictionary:
 		"role": raw.get("role", "unit"),
 		"ap": 2,
 		"max_ap": 2,
-		"ammo": int(raw.get("ammo", 8)),
+		"ammo": make_loadout(raw, side),
 		"status": []
 	}
+
+func make_loadout(raw: Dictionary, side: String) -> Dictionary:
+	if side != "hero":
+		return {}
+	var defaults := {
+		"pistol": int(data.weapons.pistol.get("ammo", 12)),
+		"shotgun": int(data.weapons.shotgun.get("ammo", 6)),
+		"rifle": int(data.weapons.rifle.get("ammo", 8)),
+		"grenade": int(data.weapons.grenade.get("ammo", 1)),
+		"medkit": int(data.weapons.medkit.get("ammo", 1))
+	}
+	var loadout = raw.get("loadout", {})
+	if typeof(loadout) == TYPE_DICTIONARY:
+		for key in loadout.keys():
+			defaults[key] = int(loadout[key])
+	defaults.pistol = int(raw.get("pistolAmmo", defaults.pistol))
+	defaults.shotgun = int(raw.get("shotgunAmmo", defaults.shotgun))
+	defaults.rifle = int(raw.get("rifleAmmo", defaults.rifle))
+	defaults.grenade = int(raw.get("grenades", defaults.grenade))
+	defaults.medkit = int(raw.get("medkits", defaults.medkit))
+	return defaults
 
 func array_to_lookup(items: Array) -> Dictionary:
 	var lookup := {}
@@ -351,6 +378,8 @@ func draw_tile(x: int, y: int) -> void:
 		draw_obstacle_prop(holder)
 	if door_tiles.has("%s,%s" % [x, y]):
 		draw_door_prop(holder)
+	if objective_tiles.has("%s,%s" % [x, y]):
+		draw_objective_marker(holder)
 
 func draw_board_hit_layer() -> void:
 	var hit_layer := Control.new()
@@ -388,8 +417,10 @@ func tile_art_path(x: int, y: int) -> String:
 		var d := distance_xy(unit.x, unit.y, x, y)
 		if current_mode == "move" and d <= unit.move:
 			return "res://assets/painted/tiles/move_tile.png"
-		if current_mode == "attack" and d <= unit.range:
+		if current_mode == "attack" and d <= selected_attack_range(unit):
 			return "res://assets/painted/tiles/attack_tile.png"
+		if current_mode == "activate" and d <= 1:
+			return "res://assets/painted/tiles/move_tile.png"
 	return "res://assets/painted/tiles/floor_lab.png" if (x + y) % 2 == 0 else "res://assets/painted/tiles/floor_lab_alt.png"
 
 func diamond_points(width: float, height: float) -> PackedVector2Array:
@@ -418,6 +449,20 @@ func draw_door_prop(holder: Node2D) -> void:
 	prop.z_index = 7
 	holder.add_child(prop)
 	prop.setup("res://assets/painted/props/metal_door.png")
+
+func draw_objective_marker(holder: Node2D) -> void:
+	var marker := Polygon2D.new()
+	marker.position = Vector2(0, -18)
+	marker.polygon = PackedVector2Array([Vector2(0, -18), Vector2(18, -4), Vector2(10, 18), Vector2(-10, 18), Vector2(-18, -4)])
+	marker.color = Color("#86e6ff") if not objective_activated else Color("#bfd66f")
+	marker.z_index = 12
+	holder.add_child(marker)
+	var core := ColorRect.new()
+	core.position = Vector2(-5, -24)
+	core.size = Vector2(10, 16)
+	core.color = Color("#f3fbff")
+	core.z_index = 13
+	holder.add_child(core)
 
 func draw_unit(unit: Dictionary, index: int) -> void:
 	var holder := Node2D.new()
@@ -459,11 +504,13 @@ func render_unit_panel() -> void:
 	for child in unit_panel.get_children():
 		child.queue_free()
 	var title := Label.new()
-	title.text = "Combate terminado" if battle_over else "Ronda %s | Turno: %s | Modo: %s" % [round_number, turn_side, current_mode]
+	title.text = "Combate terminado" if battle_over else "Ronda %s/%s | Turno: %s | Modo: %s" % [round_number, mission_turn_limit, turn_side, current_mode]
 	unit_panel.add_child(title)
 	if battle_over:
 		render_result_panel()
 		return
+	render_objective_panel()
+	render_selected_unit_panel()
 	var move_button := Button.new()
 	move_button.text = "Mover"
 	move_button.disabled = battle_over
@@ -484,6 +531,7 @@ func render_unit_panel() -> void:
 		play_sfx("res://assets/audio/ui.wav")
 	)
 	unit_panel.add_child(attack_button)
+	render_weapon_buttons()
 	var wait_button := Button.new()
 	wait_button.text = "Esperar"
 	wait_button.disabled = battle_over
@@ -496,34 +544,12 @@ func render_unit_panel() -> void:
 	style_button(end_button, true)
 	end_button.pressed.connect(start_enemy_turn)
 	unit_panel.add_child(end_button)
-	var grenade_button := Button.new()
-	grenade_button.text = "Granada"
-	grenade_button.disabled = battle_over
-	style_button(grenade_button, current_mode == "grenade")
-	grenade_button.pressed.connect(func():
-		current_mode = "grenade"
-		selected_weapon = "grenade"
-		render_battle()
-		play_sfx("res://assets/audio/ui.wav")
-	)
-	unit_panel.add_child(grenade_button)
 	var overwatch_button := Button.new()
 	overwatch_button.text = "Overwatch"
 	overwatch_button.disabled = battle_over
 	style_button(overwatch_button)
 	overwatch_button.pressed.connect(enable_overwatch)
 	unit_panel.add_child(overwatch_button)
-	var heal_button := Button.new()
-	heal_button.text = "Curar"
-	heal_button.disabled = battle_over
-	style_button(heal_button, current_mode == "heal")
-	heal_button.pressed.connect(func():
-		current_mode = "heal"
-		selected_weapon = "medkit"
-		render_battle()
-		play_sfx("res://assets/audio/ui.wav")
-	)
-	unit_panel.add_child(heal_button)
 	for i in range(units.size()):
 		var unit = units[i]
 		var button := Button.new()
@@ -543,6 +569,89 @@ func render_unit_panel() -> void:
 			play_sfx("res://assets/audio/ui.wav")
 		)
 		unit_panel.add_child(button)
+
+func render_objective_panel() -> void:
+	var mission = data.missions[selected_mission]
+	var enemies_left := units.filter(func(unit): return unit.side == "enemy").size()
+	var heroes_left := units.filter(func(unit): return unit.side == "hero").size()
+	var label := Label.new()
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.text = "Objetivo: %s\n%s\nHeroes: %s | Enemigos: %s" % [
+		objective_text(mission.get("objective", "eliminate")),
+		mission.get("briefing", ""),
+		heroes_left,
+		enemies_left
+	]
+	unit_panel.add_child(label)
+
+func render_selected_unit_panel() -> void:
+	if selected_unit < 0 or selected_unit >= units.size():
+		return
+	var unit = units[selected_unit]
+	var status_text := "Normal" if unit.status.is_empty() else ", ".join(unit.status)
+	var label := Label.new()
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.text = "%s [%s]\nHP %s/%s | AP %s/%s | Estado: %s\nMunicion P:%s E:%s R:%s G:%s B:%s" % [
+		unit.name,
+		unit.role,
+		unit.hp,
+		unit.max_hp,
+		unit.ap,
+		unit.max_ap,
+		status_text,
+		ammo_count(unit, "pistol"),
+		ammo_count(unit, "shotgun"),
+		ammo_count(unit, "rifle"),
+		ammo_count(unit, "grenade"),
+		ammo_count(unit, "medkit")
+	]
+	unit_panel.add_child(label)
+
+func render_weapon_buttons() -> void:
+	for weapon_id in ["pistol", "shotgun", "rifle", "grenade"]:
+		var weapon = data.weapons[weapon_id]
+		var button := Button.new()
+		var shots_left := selected_unit_ammo(weapon_id)
+		button.text = "%s x%s | D%s R%s" % [weapon.name, shots_left, weapon.damage, weapon.range]
+		button.disabled = selected_unit < 0 or shots_left <= 0 or turn_side != "hero"
+		style_button(button, current_mode in ["attack", "grenade"] and selected_weapon == weapon_id)
+		button.pressed.connect(func(id: String = weapon_id):
+			selected_weapon = id
+			current_mode = "grenade" if id == "grenade" else "attack"
+			render_battle()
+			play_sfx("res://assets/audio/ui.wav")
+		)
+		unit_panel.add_child(button)
+	var medkit = data.weapons.medkit
+	var heal_button := Button.new()
+	heal_button.text = "%s x%s | +%s" % [medkit.name, selected_unit_ammo("medkit"), medkit.heal]
+	heal_button.disabled = selected_unit < 0 or selected_unit_ammo("medkit") <= 0 or turn_side != "hero"
+	style_button(heal_button, current_mode == "heal")
+	heal_button.pressed.connect(func():
+		current_mode = "heal"
+		selected_weapon = "medkit"
+		render_battle()
+		play_sfx("res://assets/audio/ui.wav")
+	)
+	unit_panel.add_child(heal_button)
+	if data.missions[selected_mission].get("objective", "eliminate") == "activate":
+		var objective_button := Button.new()
+		objective_button.text = "Activar objetivo" if not objective_activated else "Objetivo activado"
+		objective_button.disabled = selected_unit < 0 or objective_activated or not selected_unit_near_objective()
+		style_button(objective_button, current_mode == "activate")
+		objective_button.pressed.connect(activate_objective)
+		unit_panel.add_child(objective_button)
+
+func objective_text(objective: String) -> String:
+	match objective:
+		"activate":
+			return "Activar la consola y eliminar hostiles." if not objective_activated else "Consola activada. Elimina los hostiles."
+		"boss":
+			return "Neutralizar al enemigo pesado."
+		"survive":
+			return "Sobrevivir hasta evacuar."
+		_:
+			return "Eliminar todos los enemigos."
 
 func render_result_panel() -> void:
 	var mission = data.missions[selected_mission]
@@ -605,6 +714,8 @@ func handle_tile(x: int, y: int) -> void:
 		try_grenade(selected_unit, clicked)
 	elif current_mode == "heal" and clicked >= 0:
 		try_heal(selected_unit, clicked)
+	elif current_mode == "activate":
+		activate_objective()
 
 func try_move_selected(x: int, y: int) -> void:
 	var unit = units[selected_unit]
@@ -635,6 +746,11 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 		return
 	if not has_line_of_sight(attacker.x, attacker.y, target.x, target.y):
 		return
+	if attacker.side == "hero" and not consume_ammo(attacker, selected_weapon):
+		add_log("%s no tiene municion para %s." % [attacker.name, data.weapons[selected_weapon].name])
+		play_sfx("res://assets/audio/ui.wav")
+		render_battle()
+		return
 	var hit_chance: int = clamp(int(weapon.get("accuracy", 80)) - cover_penalty(target.x, target.y), 15, 100)
 	var roll := randi_range(1, 100)
 	if roll > hit_chance:
@@ -651,6 +767,9 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 		damage += 2
 		add_log("Critico.")
 	target.hp -= damage
+	if attacker.side == "enemy" and attacker.role == "spitter" and not target.status.has("poisoned"):
+		target.status.append("poisoned")
+		add_log("%s queda envenenado." % target.name)
 	attacker.ap -= 1
 	mark_if_spent(attacker)
 	spawn_effect(target.x, target.y, "hit")
@@ -700,6 +819,11 @@ func try_grenade(attacker_index: int, target_index: int) -> void:
 		return
 	if distance_xy(attacker.x, attacker.y, target.x, target.y) > 4:
 		return
+	if not consume_ammo(attacker, "grenade"):
+		add_log("%s no tiene granadas." % attacker.name)
+		play_sfx("res://assets/audio/ui.wav")
+		render_battle()
+		return
 	for i in range(units.size() - 1, -1, -1):
 		if units[i].side != attacker.side and distance_xy(units[i].x, units[i].y, target.x, target.y) <= 1:
 			units[i].hp -= 4
@@ -726,7 +850,14 @@ func try_heal(healer_index: int, target_index: int) -> void:
 		return
 	if distance_xy(healer.x, healer.y, target.x, target.y) > 1:
 		return
+	if not consume_ammo(healer, "medkit"):
+		add_log("%s no tiene botiquines." % healer.name)
+		play_sfx("res://assets/audio/ui.wav")
+		render_battle()
+		return
 	target.hp = min(target.max_hp, target.hp + 5)
+	target.status.erase("bleeding")
+	target.status.erase("poisoned")
 	healer.ap -= 1
 	mark_if_spent(healer)
 	add_log("%s cura a %s." % [healer.name, target.name])
@@ -743,6 +874,10 @@ func select_next_ready_hero() -> void:
 
 func start_enemy_turn() -> void:
 	if battle_over or turn_side == "enemy":
+		return
+	apply_status_damage("enemy")
+	if check_result():
+		render_battle()
 		return
 	turn_side = "enemy"
 	render_battle()
@@ -769,6 +904,17 @@ func run_enemy_turn() -> void:
 	for unit in units:
 		unit.ap = unit.max_ap
 		unit.status.erase("overwatch")
+	apply_status_damage("hero")
+	if check_result():
+		render_battle()
+		return
+	if round_number > mission_turn_limit:
+		add_log("Derrota. Se agoto la ventana de extraccion.")
+		play_sfx("res://assets/audio/defeat.wav")
+		battle_over = true
+		battle_result = "defeat"
+		render_battle()
+		return
 	select_next_ready_hero()
 	add_log("Turno de heroes.")
 	play_sfx("res://assets/audio/turn.wav")
@@ -802,7 +948,18 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 func check_result() -> bool:
 	var heroes := units.filter(func(unit): return unit.side == "hero")
 	var enemies := units.filter(func(unit): return unit.side == "enemy")
-	if enemies.is_empty():
+	var mission_objective = data.missions[selected_mission].get("objective", "eliminate")
+	var boss_alive = enemies.any(func(unit): return unit.role == "boss")
+	var objective_done = mission_objective != "activate" or objective_activated
+	var boss_done = mission_objective != "boss" or not boss_alive
+	if enemies.is_empty() and objective_done:
+		add_log("Victoria. Zona despejada.")
+		play_sfx("res://assets/audio/victory.wav")
+		battle_over = true
+		battle_result = "victory"
+		claim_mission_rewards()
+		return true
+	if mission_objective == "boss" and boss_done:
 		add_log("Victoria. Zona despejada.")
 		play_sfx("res://assets/audio/victory.wav")
 		battle_over = true
@@ -857,6 +1014,74 @@ func distance_xy(ax: int, ay: int, bx: int, by: int) -> int:
 func mark_if_spent(unit: Dictionary) -> void:
 	if unit.ap <= 0:
 		acted_units[unit.id] = true
+
+func selected_attack_range(unit: Dictionary) -> int:
+	if selected_weapon in data.weapons:
+		return int(data.weapons[selected_weapon].get("range", unit.range))
+	return int(unit.range)
+
+func selected_unit_ammo(kind: String) -> int:
+	if selected_unit < 0 or selected_unit >= units.size():
+		return 0
+	return ammo_count(units[selected_unit], kind)
+
+func ammo_count(unit: Dictionary, kind: String) -> int:
+	if not unit.has("ammo") or typeof(unit.ammo) != TYPE_DICTIONARY:
+		return 0
+	return int(unit.ammo.get(kind, 0))
+
+func consume_ammo(unit: Dictionary, kind: String) -> bool:
+	if unit.side != "hero":
+		return true
+	if ammo_count(unit, kind) <= 0:
+		return false
+	unit.ammo[kind] = ammo_count(unit, kind) - 1
+	return true
+
+func selected_unit_near_objective() -> bool:
+	if selected_unit < 0 or selected_unit >= units.size():
+		return false
+	var unit = units[selected_unit]
+	for key in objective_tiles.keys():
+		var parts = str(key).split(",")
+		if parts.size() == 2 and distance_xy(unit.x, unit.y, int(parts[0]), int(parts[1])) <= 1:
+			return true
+	return false
+
+func activate_objective() -> void:
+	if battle_over or selected_unit < 0 or selected_unit >= units.size():
+		return
+	var unit = units[selected_unit]
+	if unit.side != "hero" or unit.ap <= 0 or objective_activated or not selected_unit_near_objective():
+		return
+	objective_activated = true
+	unit.ap -= 1
+	mark_if_spent(unit)
+	add_log("%s activa la consola." % unit.name)
+	play_sfx("res://assets/audio/ui.wav")
+	if check_result():
+		render_battle()
+		return
+	select_next_ready_hero()
+	render_battle()
+
+func apply_status_damage(side: String) -> void:
+	for i in range(units.size() - 1, -1, -1):
+		if units[i].side != side:
+			continue
+		var damage := 0
+		if units[i].status.has("bleeding"):
+			damage += 1
+		if units[i].status.has("poisoned"):
+			damage += 1
+		if damage <= 0:
+			continue
+		units[i].hp -= damage
+		add_log("%s sufre %s por estados." % [units[i].name, damage])
+		spawn_effect(units[i].x, units[i].y, "hit")
+		if units[i].hp <= 0:
+			add_log("%s cae por sus heridas." % units[i].name)
+			units.remove_at(i)
 
 func is_blocked(x: int, y: int) -> bool:
 	return unit_at(x, y) >= 0 or obstacle_tiles.has("%s,%s" % [x, y])
