@@ -23,7 +23,7 @@ func setup(data: Dictionary) -> void:
 	unit_data = data
 	var art_name := str(data.get("art", "chris.png"))
 	sprite.texture = load("res://assets/painted/units/%s" % art_name)
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	fit_sprite_to_ground(art_name)
 	update_hp()
 
