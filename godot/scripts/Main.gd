@@ -52,6 +52,8 @@ var reward_claimed := false
 var mission_turn_limit := 10
 var objective_activated := false
 var objective_tiles := {}
+var current_music_mode := ""
+var menu_music_stream: AudioStreamWAV
 
 @onready var title_screen: Control = %TitleScreen
 @onready var start_screen: Control = %StartScreen
@@ -75,9 +77,6 @@ func _ready() -> void:
 	campaign = load_json(SAVE_PATH)
 	if campaign.is_empty():
 		campaign = {}
-	music.stream = load("res://assets/audio/music-ambient.wav")
-	music.volume_db = -18
-	music.play()
 	render_factions()
 	render_missions()
 	show_title()
@@ -196,11 +195,13 @@ func show_title() -> void:
 	title_screen.visible = true
 	start_screen.visible = false
 	battle_screen.visible = false
+	play_menu_music()
 
 func show_menu() -> void:
 	title_screen.visible = false
 	start_screen.visible = true
 	battle_screen.visible = false
+	play_menu_music()
 	render_missions()
 	render_menu_preview()
 
@@ -227,6 +228,7 @@ func start_battle() -> void:
 	objective_tiles = array_to_lookup(active_map.get("objectives", []))
 	units = build_units()
 	log_label.clear()
+	play_battle_music()
 	render_battle()
 	add_log("Mision iniciada: %s" % data.missions[selected_mission].name)
 	add_log("Selecciona una unidad, mueve o ataca.")
@@ -1423,6 +1425,59 @@ func spawn_float_text(x: int, y: int, text: String, color: Color) -> void:
 	tween.tween_property(label, "position", label.position + Vector2(0, -26), 0.45)
 	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.45)
 	tween.tween_callback(label.queue_free)
+
+func play_menu_music() -> void:
+	if current_music_mode == "menu" and music.playing:
+		return
+	current_music_mode = "menu"
+	if menu_music_stream == null:
+		menu_music_stream = build_menu_chiptune()
+	music.stream = menu_music_stream
+	music.volume_db = -16
+	music.play()
+
+func play_battle_music() -> void:
+	if current_music_mode == "battle" and music.playing:
+		return
+	current_music_mode = "battle"
+	music.stream = load("res://assets/audio/music-ambient.wav")
+	music.volume_db = -18
+	music.play()
+
+func build_menu_chiptune() -> AudioStreamWAV:
+	var mix_rate := 22050
+	var step_seconds := 0.18
+	var riff := [49.0, 49.0, 58.27, 49.0, 69.30, 65.41, 58.27, 49.0, 46.25, 49.0, 58.27, 73.42, 69.30, 58.27, 49.0, 36.71]
+	var steps := 64
+	var total_samples := int(mix_rate * step_seconds * steps)
+	var samples_per_step := int(mix_rate * step_seconds)
+	var pcm := PackedByteArray()
+	pcm.resize(total_samples * 2)
+	for i in range(total_samples):
+		var step := int(i / samples_per_step)
+		var phase := float(i % samples_per_step) / float(samples_per_step)
+		var t := float(i) / float(mix_rate)
+		var freq: float = riff[step % riff.size()]
+		var lead: float = square_wave(freq, t) * 0.38
+		var bass: float = square_wave(freq * 0.5, t) * 0.24
+		var pulse: float = square_wave(880.0, t) * 0.08 if step % 4 == 2 and phase < 0.35 else 0.0
+		var kick: float = sin(phase * PI * 10.0) * (1.0 - phase) * 0.38 if step % 4 == 0 and phase < 0.28 else 0.0
+		var value: float = clamp(lead + bass + pulse + kick, -1.0, 1.0)
+		var sample: int = int(value * 28000.0)
+		pcm[i * 2] = sample & 0xff
+		pcm[i * 2 + 1] = (sample >> 8) & 0xff
+	var stream := AudioStreamWAV.new()
+	stream.format = AudioStreamWAV.FORMAT_16_BITS
+	stream.mix_rate = mix_rate
+	stream.stereo = false
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = total_samples
+	stream.data = pcm
+	return stream
+
+func square_wave(freq: float, t: float) -> float:
+	return 1.0 if sin(TAU * freq * t) >= 0.0 else -1.0
 
 func add_log(text: String) -> void:
 	log_label.append_text(text + "\n")
