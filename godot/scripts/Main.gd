@@ -7,9 +7,9 @@ const PROP_VIEW := preload("res://scenes/PropView.tscn")
 const EFFECT_BURST := preload("res://scenes/EffectBurst.tscn")
 const TILE_W := 76.0
 const TILE_H := 40.0
-const BOARD_W := 12
-const BOARD_H := 9
-const ISO_ORIGIN := Vector2(430, 64)
+const BOARD_W := 15
+const BOARD_H := 11
+const ISO_ORIGIN := Vector2(500, 24)
 const COLORS := {
 	"bg": Color("#070909"),
 	"bg_2": Color("#101412"),
@@ -44,6 +44,7 @@ var acted_units := {}
 var cover_tiles := ["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]
 var obstacle_tiles := {}
 var door_tiles := {}
+var wall_tiles := {}
 var active_map := {}
 var battle_over := false
 var battle_result := ""
@@ -222,6 +223,7 @@ func start_battle() -> void:
 	cover_tiles = active_map.get("cover", [])
 	obstacle_tiles = array_to_lookup(active_map.get("obstacles", []))
 	door_tiles = array_to_lookup(active_map.get("doors", []))
+	wall_tiles = array_to_lookup(active_map.get("walls", []))
 	objective_tiles = array_to_lookup(active_map.get("objectives", []))
 	units = build_units()
 	log_label.clear()
@@ -356,15 +358,30 @@ func render_menu_preview() -> void:
 	briefing.text = "%s\nOBJETIVO: %s\nZONA: %s" % [mission.briefing, objective_text(mission.get("objective", "eliminate")), str(map.get("theme", "unknown")).to_upper()]
 	briefing.add_theme_color_override("font_color", COLORS.text)
 	battle_preview.add_child(briefing)
-	var grid_origin := Vector2(70, 190)
-	for y in range(5):
-		for x in range(8):
+	var grid_origin := Vector2(270, 205)
+	var preview_w := int(map.get("width", BOARD_W))
+	var preview_h := int(map.get("height", BOARD_H))
+	var preview_walls: Array = map.get("walls", [])
+	var preview_cover: Array = map.get("cover", [])
+	var preview_doors: Array = map.get("doors", [])
+	var preview_objectives: Array = map.get("objectives", [])
+	for y in range(preview_h):
+		for x in range(preview_w):
+			var key := "%s,%s" % [x, y]
 			var tile := Polygon2D.new()
-			var p := grid_origin + Vector2((x - y) * 30.0, (x + y) * 15.0)
+			var p := grid_origin + Vector2((x - y) * 18.0, (x + y) * 9.0)
 			tile.position = p
-			tile.polygon = PackedVector2Array([Vector2(0, -14), Vector2(28, 0), Vector2(0, 14), Vector2(-28, 0)])
+			tile.polygon = PackedVector2Array([Vector2(0, -8), Vector2(16, 0), Vector2(0, 8), Vector2(-16, 0)])
 			tile.color = Color("#222c29") if (x + y) % 2 == 0 else Color("#1a2220")
-			tile.z_index = y * 8 + x
+			if preview_cover.has(key):
+				tile.color = Color("#4a503b")
+			if preview_walls.has(key):
+				tile.color = Color("#4b2623")
+			if preview_doors.has(key):
+				tile.color = Color("#876f42")
+			if preview_objectives.has(key):
+				tile.color = Color("#77b7bd")
+			tile.z_index = y * preview_w + x
 			battle_preview.add_child(tile)
 	var red_line := ColorRect.new()
 	red_line.position = Vector2(28, 160)
@@ -442,6 +459,9 @@ func draw_tile(x: int, y: int) -> void:
 	highlight.width = 1.4
 	highlight.default_color = Color(1, 1, 1, 0.12)
 	holder.add_child(highlight)
+	if wall_tiles.has("%s,%s" % [x, y]):
+		draw_wall_prop(holder, x, y)
+		return
 	if cover_tiles.has("%s,%s" % [x, y]):
 		draw_cover_prop(holder)
 	if obstacle_tiles.has("%s,%s" % [x, y]):
@@ -454,7 +474,7 @@ func draw_tile(x: int, y: int) -> void:
 func draw_board_hit_layer() -> void:
 	var hit_layer := Control.new()
 	hit_layer.position = Vector2(0, 0)
-	hit_layer.size = Vector2(920, 560)
+	hit_layer.size = Vector2(1080, 660)
 	hit_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	hit_layer.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -508,6 +528,36 @@ func draw_cover_prop(holder: Node2D) -> void:
 	prop.z_index = 5
 	holder.add_child(prop)
 	prop.setup("res://assets/painted/props/cover_crate.png")
+
+func draw_wall_prop(holder: Node2D, x: int, y: int) -> void:
+	var theme := str(active_map.get("theme", "lab"))
+	var wall := Polygon2D.new()
+	wall.position = Vector2(0, -22)
+	wall.polygon = PackedVector2Array([
+		Vector2(-35, 0), Vector2(0, -18), Vector2(35, 0), Vector2(35, -42), Vector2(0, -60), Vector2(-35, -42)
+	])
+	wall.color = wall_color_for_theme(theme, x, y)
+	wall.z_index = 8
+	holder.add_child(wall)
+	var top := Polygon2D.new()
+	top.position = Vector2(0, -82)
+	top.polygon = PackedVector2Array([Vector2(-35, 40), Vector2(0, 22), Vector2(35, 40), Vector2(0, 58)])
+	top.color = wall.color.lightened(0.18)
+	top.z_index = 9
+	holder.add_child(top)
+	var edge := Line2D.new()
+	edge.points = PackedVector2Array([Vector2(-35, -22), Vector2(0, -40), Vector2(35, -22)])
+	edge.width = 2.0
+	edge.default_color = Color(COLORS.line_hot, 0.7)
+	edge.z_index = 10
+	holder.add_child(edge)
+
+func wall_color_for_theme(theme: String, x: int, y: int) -> Color:
+	if theme == "street":
+		return Color("#2f3331") if (x + y) % 2 == 0 else Color("#242928")
+	if theme == "village":
+		return Color("#453224") if (x + y) % 2 == 0 else Color("#2e251e")
+	return Color("#374044") if (x + y) % 2 == 0 else Color("#273034")
 
 func draw_obstacle_prop(holder: Node2D) -> void:
 	var prop = PROP_VIEW.instantiate()
@@ -1071,7 +1121,7 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 	for candidate in candidates:
 		var x = candidate[0]
 		var y = candidate[1]
-		if x < 0 or y < 0 or x >= 12 or y >= 9:
+		if x < 0 or y < 0 or x >= BOARD_W or y >= BOARD_H:
 			continue
 		if is_blocked(x, y):
 			continue
@@ -1244,7 +1294,7 @@ func apply_status_damage(side: String) -> void:
 			units.remove_at(i)
 
 func is_blocked(x: int, y: int) -> bool:
-	return unit_at(x, y) >= 0 or obstacle_tiles.has("%s,%s" % [x, y])
+	return unit_at(x, y) >= 0 or obstacle_tiles.has("%s,%s" % [x, y]) or wall_tiles.has("%s,%s" % [x, y])
 
 func cover_penalty(x: int, y: int) -> int:
 	return 25 if cover_tiles.has("%s,%s" % [x, y]) else 0
@@ -1257,7 +1307,7 @@ func has_line_of_sight(ax: int, ay: int, bx: int, by: int) -> bool:
 		var t := float(step) / float(steps)
 		var x := roundi(lerp(float(ax), float(bx), t))
 		var y := roundi(lerp(float(ay), float(by), t))
-		if obstacle_tiles.has("%s,%s" % [x, y]):
+		if obstacle_tiles.has("%s,%s" % [x, y]) or wall_tiles.has("%s,%s" % [x, y]):
 			return false
 	return true
 
