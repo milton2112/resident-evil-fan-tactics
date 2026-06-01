@@ -45,6 +45,8 @@ var cover_tiles := ["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]
 var obstacle_tiles := {}
 var door_tiles := {}
 var wall_tiles := {}
+var supply_tiles := {}
+var used_supply_tiles := {}
 var active_map := {}
 var battle_over := false
 var battle_result := ""
@@ -225,6 +227,8 @@ func start_battle() -> void:
 	obstacle_tiles = array_to_lookup(active_map.get("obstacles", []))
 	door_tiles = array_to_lookup(active_map.get("doors", []))
 	wall_tiles = array_to_lookup(active_map.get("walls", []))
+	supply_tiles = array_to_lookup(active_map.get("supplies", []))
+	used_supply_tiles = {}
 	objective_tiles = array_to_lookup(active_map.get("objectives", []))
 	units = build_units()
 	log_label.clear()
@@ -367,6 +371,7 @@ func render_menu_preview() -> void:
 	var preview_cover: Array = map.get("cover", [])
 	var preview_doors: Array = map.get("doors", [])
 	var preview_objectives: Array = map.get("objectives", [])
+	var preview_supplies: Array = map.get("supplies", [])
 	for y in range(preview_h):
 		for x in range(preview_w):
 			var key := "%s,%s" % [x, y]
@@ -381,6 +386,8 @@ func render_menu_preview() -> void:
 				tile.color = Color("#4b2623")
 			if preview_doors.has(key):
 				tile.color = Color("#876f42")
+			if preview_supplies.has(key):
+				tile.color = Color("#6f7b45")
 			if preview_objectives.has(key):
 				tile.color = Color("#77b7bd")
 			tile.z_index = y * preview_w + x
@@ -471,6 +478,8 @@ func draw_tile(x: int, y: int) -> void:
 		draw_obstacle_prop(holder)
 	if door_tiles.has("%s,%s" % [x, y]):
 		draw_door_prop(holder)
+	if supply_tiles.has("%s,%s" % [x, y]):
+		draw_supply_prop(holder, x, y)
 	if objective_tiles.has("%s,%s" % [x, y]):
 		draw_objective_marker(holder)
 
@@ -618,6 +627,31 @@ func draw_door_prop(holder: Node2D) -> void:
 	prop.z_index = 7
 	holder.add_child(prop)
 	prop.setup("res://assets/painted/props/metal_door.png")
+
+func draw_supply_prop(holder: Node2D, x: int, y: int) -> void:
+	var key := "%s,%s" % [x, y]
+	var used := used_supply_tiles.has(key)
+	var base := Polygon2D.new()
+	base.position = Vector2(0, -24)
+	base.polygon = PackedVector2Array([Vector2(-22, -8), Vector2(0, -20), Vector2(22, -8), Vector2(22, 10), Vector2(0, 22), Vector2(-22, 10)])
+	base.color = Color("#303c33") if used else Color("#5c6142")
+	base.z_index = 10
+	holder.add_child(base)
+	var lid := Line2D.new()
+	lid.points = PackedVector2Array([Vector2(-18, -28), Vector2(0, -38), Vector2(18, -28)])
+	lid.width = 2.0
+	lid.default_color = Color("#121715") if used else COLORS.accent
+	lid.z_index = 11
+	holder.add_child(lid)
+	var cross := Label.new()
+	cross.text = "--" if used else "+"
+	cross.position = Vector2(-10, -41)
+	cross.size = Vector2(20, 18)
+	cross.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cross.add_theme_font_size_override("font_size", 14)
+	cross.add_theme_color_override("font_color", COLORS.muted if used else COLORS.bio)
+	cross.z_index = 12
+	holder.add_child(cross)
 
 func draw_objective_marker(holder: Node2D) -> void:
 	var marker := Polygon2D.new()
@@ -842,6 +876,12 @@ func render_weapon_buttons() -> void:
 		style_button(objective_button, current_mode == "activate")
 		objective_button.pressed.connect(activate_objective)
 		unit_panel.add_child(objective_button)
+	var supply_button := Button.new()
+	supply_button.text = "SAQUEAR SUMINISTROS"
+	supply_button.disabled = selected_unit < 0 or not selected_unit_near_fresh_supply()
+	style_button(supply_button, current_mode == "supply")
+	supply_button.pressed.connect(scavenge_supply)
+	unit_panel.add_child(supply_button)
 
 func selected_weapon_accuracy(weapon_id: String) -> int:
 	if not data.weapons.has(weapon_id):
@@ -943,6 +983,8 @@ func handle_tile(x: int, y: int) -> void:
 		try_heal(selected_unit, clicked)
 	elif current_mode == "activate":
 		activate_objective()
+	elif current_mode == "supply":
+		scavenge_supply()
 
 func try_move_selected(x: int, y: int) -> void:
 	var unit = units[selected_unit]
@@ -1301,6 +1343,46 @@ func selected_unit_near_objective() -> bool:
 		if parts.size() == 2 and distance_xy(unit.x, unit.y, int(parts[0]), int(parts[1])) <= 1:
 			return true
 	return false
+
+func selected_unit_near_fresh_supply() -> bool:
+	return nearest_fresh_supply_key() != ""
+
+func nearest_fresh_supply_key() -> String:
+	if selected_unit < 0 or selected_unit >= units.size():
+		return ""
+	var unit = units[selected_unit]
+	for key in supply_tiles.keys():
+		if used_supply_tiles.has(key):
+			continue
+		var parts = str(key).split(",")
+		if parts.size() == 2 and distance_xy(unit.x, unit.y, int(parts[0]), int(parts[1])) <= 1:
+			return str(key)
+	return ""
+
+func scavenge_supply() -> void:
+	if battle_over or selected_unit < 0 or selected_unit >= units.size():
+		return
+	var unit = units[selected_unit]
+	if unit.side != "hero" or unit.ap <= 0:
+		return
+	var key := nearest_fresh_supply_key()
+	if key == "":
+		add_log("No hay suministros al alcance.")
+		play_sfx("res://assets/audio/ui.wav")
+		return
+	used_supply_tiles[key] = true
+	unit.ammo.pistol = ammo_count(unit, "pistol") + 4
+	unit.ammo.shotgun = ammo_count(unit, "shotgun") + 2
+	unit.ammo.rifle = ammo_count(unit, "rifle") + 2
+	if ammo_count(unit, "medkit") < 2:
+		unit.ammo.medkit = ammo_count(unit, "medkit") + 1
+	unit.ap -= 1
+	mark_if_spent(unit)
+	add_log("%s recupera suministros." % unit.name)
+	spawn_float_text(unit.x, unit.y, "+SUPPLY", COLORS.accent)
+	play_sfx("res://assets/audio/ui.wav")
+	select_next_ready_hero()
+	render_battle()
 
 func activate_objective() -> void:
 	if battle_over or selected_unit < 0 or selected_unit >= units.size():

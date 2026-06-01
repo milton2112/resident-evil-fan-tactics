@@ -297,7 +297,11 @@
                                                          "art":  "licker.png",
                                                          "role":  "ambusher"
                                                      }
-                                                 ]
+                                                 ],
+                                     "supplies":  [
+                                                      "3,3",
+                                                      "10,7"
+                                                  ]
                                  }
                      },
                      {
@@ -484,7 +488,11 @@
                                                          "art":  "zombie.png",
                                                          "role":  "spitter"
                                                      }
-                                                 ]
+                                                 ],
+                                     "supplies":  [
+                                                      "3,7",
+                                                      "11,3"
+                                                  ]
                                  }
                      },
                      {
@@ -670,9 +678,12 @@
                                                          "art":  "licker.png",
                                                          "role":  "ambusher"
                                                      }
-                                                 ]
+                                                 ],
+                                     "supplies":  [
+                                                      "3,2",
+                                                      "10,8"
+                                                  ]
                                  }
                      }
                  ]
 }
-
