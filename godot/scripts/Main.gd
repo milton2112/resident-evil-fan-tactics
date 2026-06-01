@@ -44,6 +44,7 @@ var acted_units := {}
 var cover_tiles := ["4,1", "7,1", "2,3", "5,4", "8,4", "9,6", "3,7"]
 var obstacle_tiles := {}
 var door_tiles := {}
+var open_door_tiles := {}
 var wall_tiles := {}
 var supply_tiles := {}
 var used_supply_tiles := {}
@@ -56,6 +57,10 @@ var objective_activated := false
 var objective_tiles := {}
 var current_music_mode := ""
 var menu_music_stream: AudioStreamWAV
+var pending_end_turn_confirm := false
+var pause_open := false
+var music_enabled := true
+var sfx_enabled := true
 
 @onready var title_screen: Control = %TitleScreen
 @onready var start_screen: Control = %StartScreen
@@ -115,10 +120,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				enable_overwatch()
 			KEY_SPACE:
 				if battle_screen.visible:
-					start_enemy_turn()
+					request_end_turn()
 			KEY_ESCAPE:
 				if battle_screen.visible:
-					show_menu()
+					toggle_pause()
 
 func apply_visual_theme() -> void:
 	add_theme_color_override("font_color", COLORS.text)
@@ -217,6 +222,8 @@ func start_battle() -> void:
 	current_mode = "move"
 	selected_weapon = "pistol"
 	acted_units = {}
+	pending_end_turn_confirm = false
+	pause_open = false
 	battle_over = false
 	battle_result = ""
 	reward_claimed = false
@@ -226,6 +233,7 @@ func start_battle() -> void:
 	cover_tiles = active_map.get("cover", [])
 	obstacle_tiles = array_to_lookup(active_map.get("obstacles", []))
 	door_tiles = array_to_lookup(active_map.get("doors", []))
+	open_door_tiles = {}
 	wall_tiles = array_to_lookup(active_map.get("walls", []))
 	supply_tiles = array_to_lookup(active_map.get("supplies", []))
 	used_supply_tiles = {}
@@ -477,7 +485,7 @@ func draw_tile(x: int, y: int) -> void:
 	if obstacle_tiles.has("%s,%s" % [x, y]):
 		draw_obstacle_prop(holder)
 	if door_tiles.has("%s,%s" % [x, y]):
-		draw_door_prop(holder)
+		draw_door_prop(holder, x, y)
 	if supply_tiles.has("%s,%s" % [x, y]):
 		draw_supply_prop(holder, x, y)
 	if objective_tiles.has("%s,%s" % [x, y]):
@@ -620,13 +628,24 @@ func draw_obstacle_prop(holder: Node2D) -> void:
 	holder.add_child(prop)
 	prop.setup("res://assets/painted/props/lab_tank.png")
 
-func draw_door_prop(holder: Node2D) -> void:
+func draw_door_prop(holder: Node2D, x: int, y: int) -> void:
 	var prop = PROP_VIEW.instantiate()
-	prop.position = Vector2(0, -34)
-	prop.scale = Vector2(0.5, 0.5)
+	var key := "%s,%s" % [x, y]
+	var open := open_door_tiles.has(key)
+	prop.position = Vector2(14, -28) if open else Vector2(0, -34)
+	prop.scale = Vector2(0.38, 0.5) if open else Vector2(0.5, 0.5)
+	prop.rotation_degrees = -18 if open else 0
 	prop.z_index = 7
 	holder.add_child(prop)
 	prop.setup("res://assets/painted/props/metal_door.png")
+	if open:
+		var label := Label.new()
+		label.text = "ABIERTA"
+		label.position = Vector2(-22, -42)
+		label.add_theme_font_size_override("font_size", 8)
+		label.add_theme_color_override("font_color", COLORS.bio)
+		label.z_index = 18
+		holder.add_child(label)
 
 func draw_supply_prop(holder: Node2D, x: int, y: int) -> void:
 	var key := "%s,%s" % [x, y]
@@ -734,12 +753,15 @@ func render_unit_panel() -> void:
 	for child in unit_panel.get_children():
 		child.queue_free()
 	var title := Label.new()
-	title.text = "COMBATE TERMINADO" if battle_over else "RONDA %s/%s  //  TURNO %s  //  %s" % [round_number, mission_turn_limit, str(turn_side).to_upper(), str(current_mode).to_upper()]
+	title.text = "COMBATE TERMINADO" if battle_over else "RONDA %s/%s  //  TURNO %s  //  %s%s" % [round_number, mission_turn_limit, str(turn_side).to_upper(), str(current_mode).to_upper(), "  //  PAUSA" if pause_open else ""]
 	title.add_theme_color_override("font_color", COLORS.accent)
 	title.add_theme_font_size_override("font_size", 16)
 	unit_panel.add_child(title)
 	if battle_over:
 		render_result_panel()
+		return
+	if pause_open:
+		render_pause_panel()
 		return
 	render_objective_panel()
 	render_selected_unit_panel()
@@ -771,10 +793,10 @@ func render_unit_panel() -> void:
 	wait_button.pressed.connect(wait_selected_unit)
 	unit_panel.add_child(wait_button)
 	var end_button := Button.new()
-	end_button.text = "TERMINAR TURNO"
+	end_button.text = "CONFIRMAR TURNO" if pending_end_turn_confirm else "TERMINAR TURNO"
 	end_button.disabled = battle_over
 	style_button(end_button, true)
-	end_button.pressed.connect(start_enemy_turn)
+	end_button.pressed.connect(request_end_turn)
 	unit_panel.add_child(end_button)
 	var overwatch_button := Button.new()
 	overwatch_button.text = "OVERWATCH"
@@ -801,6 +823,33 @@ func render_unit_panel() -> void:
 			play_sfx("res://assets/audio/ui.wav")
 		)
 		unit_panel.add_child(button)
+
+func render_pause_panel() -> void:
+	var label := Label.new()
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.text = "PAUSA\nAjusta audio o vuelve al menu principal."
+	label.add_theme_color_override("font_color", COLORS.muted)
+	unit_panel.add_child(label)
+	var resume_button := Button.new()
+	resume_button.text = "REANUDAR"
+	style_button(resume_button, true)
+	resume_button.pressed.connect(toggle_pause)
+	unit_panel.add_child(resume_button)
+	var music_button := Button.new()
+	music_button.text = "MUSICA: ON" if music_enabled else "MUSICA: OFF"
+	style_button(music_button)
+	music_button.pressed.connect(toggle_music)
+	unit_panel.add_child(music_button)
+	var sfx_button := Button.new()
+	sfx_button.text = "EFECTOS: ON" if sfx_enabled else "EFECTOS: OFF"
+	style_button(sfx_button)
+	sfx_button.pressed.connect(toggle_sfx)
+	unit_panel.add_child(sfx_button)
+	var menu_button := Button.new()
+	menu_button.text = "VOLVER AL MENU"
+	style_button(menu_button)
+	menu_button.pressed.connect(show_menu)
+	unit_panel.add_child(menu_button)
 
 func render_objective_panel() -> void:
 	var mission = data.missions[selected_mission]
@@ -882,6 +931,14 @@ func render_weapon_buttons() -> void:
 	style_button(supply_button, current_mode == "supply")
 	supply_button.pressed.connect(scavenge_supply)
 	unit_panel.add_child(supply_button)
+	var door_button := Button.new()
+	var door_key := nearest_door_key()
+	var door_open := door_key != "" and open_door_tiles.has(door_key)
+	door_button.text = "CERRAR PUERTA" if door_open else "ABRIR PUERTA"
+	door_button.disabled = selected_unit < 0 or door_key == "" or turn_side != "hero"
+	style_button(door_button, current_mode == "door")
+	door_button.pressed.connect(toggle_nearby_door)
+	unit_panel.add_child(door_button)
 
 func selected_weapon_accuracy(weapon_id: String) -> int:
 	if not data.weapons.has(weapon_id):
@@ -985,8 +1042,11 @@ func handle_tile(x: int, y: int) -> void:
 		activate_objective()
 	elif current_mode == "supply":
 		scavenge_supply()
+	elif current_mode == "door":
+		toggle_nearby_door()
 
 func try_move_selected(x: int, y: int) -> void:
+	pending_end_turn_confirm = false
 	var unit = units[selected_unit]
 	var path := find_path(Vector2i(unit.x, unit.y), Vector2i(x, y), unit.move)
 	if path.is_empty():
@@ -1004,6 +1064,7 @@ func try_move_selected(x: int, y: int) -> void:
 	render_battle()
 
 func try_attack(attacker_index: int, target_index: int) -> void:
+	pending_end_turn_confirm = false
 	if attacker_index < 0 or target_index < 0:
 		return
 	var attacker = units[attacker_index]
@@ -1063,6 +1124,7 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 	render_battle()
 
 func wait_selected_unit() -> void:
+	pending_end_turn_confirm = false
 	if battle_over or selected_unit < 0 or selected_unit >= units.size():
 		return
 	var unit = units[selected_unit]
@@ -1075,6 +1137,7 @@ func wait_selected_unit() -> void:
 	render_battle()
 
 func enable_overwatch() -> void:
+	pending_end_turn_confirm = false
 	if battle_over or selected_unit < 0 or selected_unit >= units.size():
 		return
 	var unit = units[selected_unit]
@@ -1088,6 +1151,7 @@ func enable_overwatch() -> void:
 	render_battle()
 
 func try_grenade(attacker_index: int, target_index: int) -> void:
+	pending_end_turn_confirm = false
 	var attacker = units[attacker_index]
 	var target = units[target_index]
 	if attacker.side == target.side or attacker.ap <= 0:
@@ -1120,6 +1184,7 @@ func try_grenade(attacker_index: int, target_index: int) -> void:
 	render_battle()
 
 func try_heal(healer_index: int, target_index: int) -> void:
+	pending_end_turn_confirm = false
 	var healer = units[healer_index]
 	var target = units[target_index]
 	if healer.side != target.side or healer.ap <= 0:
@@ -1142,6 +1207,42 @@ func try_heal(healer_index: int, target_index: int) -> void:
 	select_next_ready_hero()
 	render_battle()
 
+func request_end_turn() -> void:
+	if battle_over or turn_side != "hero":
+		return
+	if not pending_end_turn_confirm:
+		pending_end_turn_confirm = true
+		add_log("Pulsa de nuevo para terminar el turno.")
+		play_sfx("res://assets/audio/ui.wav")
+		render_battle()
+		return
+	start_enemy_turn()
+
+func toggle_pause() -> void:
+	if battle_over:
+		return
+	pause_open = not pause_open
+	pending_end_turn_confirm = false
+	play_sfx("res://assets/audio/ui.wav")
+	render_battle()
+
+func toggle_music() -> void:
+	music_enabled = not music_enabled
+	if music_enabled:
+		if battle_screen.visible:
+			play_battle_music()
+		else:
+			play_menu_music()
+	else:
+		music.stop()
+	render_battle()
+
+func toggle_sfx() -> void:
+	sfx_enabled = not sfx_enabled
+	if sfx_enabled:
+		play_sfx("res://assets/audio/ui.wav")
+	render_battle()
+
 func select_next_ready_hero() -> void:
 	for i in range(units.size()):
 		if units[i].side == "hero" and units[i].ap > 0 and not acted_units.has(units[i].id):
@@ -1152,6 +1253,8 @@ func select_next_ready_hero() -> void:
 func start_enemy_turn() -> void:
 	if battle_over or turn_side == "enemy":
 		return
+	pending_end_turn_confirm = false
+	pause_open = false
 	apply_status_damage("enemy")
 	if check_result():
 		render_battle()
@@ -1347,6 +1450,19 @@ func selected_unit_near_objective() -> bool:
 func selected_unit_near_fresh_supply() -> bool:
 	return nearest_fresh_supply_key() != ""
 
+func selected_unit_near_door() -> bool:
+	return nearest_door_key() != ""
+
+func nearest_door_key() -> String:
+	if selected_unit < 0 or selected_unit >= units.size():
+		return ""
+	var unit = units[selected_unit]
+	for key in door_tiles.keys():
+		var parts = str(key).split(",")
+		if parts.size() == 2 and distance_xy(unit.x, unit.y, int(parts[0]), int(parts[1])) <= 1:
+			return str(key)
+	return ""
+
 func nearest_fresh_supply_key() -> String:
 	if selected_unit < 0 or selected_unit >= units.size():
 		return ""
@@ -1360,6 +1476,7 @@ func nearest_fresh_supply_key() -> String:
 	return ""
 
 func scavenge_supply() -> void:
+	pending_end_turn_confirm = false
 	if battle_over or selected_unit < 0 or selected_unit >= units.size():
 		return
 	var unit = units[selected_unit]
@@ -1384,7 +1501,35 @@ func scavenge_supply() -> void:
 	select_next_ready_hero()
 	render_battle()
 
+func toggle_nearby_door() -> void:
+	pending_end_turn_confirm = false
+	if battle_over or selected_unit < 0 or selected_unit >= units.size():
+		return
+	var unit = units[selected_unit]
+	if unit.side != "hero" or unit.ap <= 0:
+		return
+	var key := nearest_door_key()
+	if key == "":
+		add_log("No hay puertas al alcance.")
+		play_sfx("res://assets/audio/ui.wav")
+		render_battle()
+		return
+	if open_door_tiles.has(key):
+		open_door_tiles.erase(key)
+		add_log("%s cierra una puerta." % unit.name)
+	else:
+		open_door_tiles[key] = true
+		add_log("%s abre una puerta." % unit.name)
+	unit.ap -= 1
+	mark_if_spent(unit)
+	current_mode = "move"
+	spawn_float_text(unit.x, unit.y, "-1 AP", COLORS.accent)
+	play_sfx("res://assets/audio/ui.wav")
+	select_next_ready_hero()
+	render_battle()
+
 func activate_objective() -> void:
+	pending_end_turn_confirm = false
 	if battle_over or selected_unit < 0 or selected_unit >= units.size():
 		return
 	var unit = units[selected_unit]
@@ -1420,7 +1565,8 @@ func apply_status_damage(side: String) -> void:
 			units.remove_at(i)
 
 func is_blocked(x: int, y: int) -> bool:
-	return unit_at(x, y) >= 0 or obstacle_tiles.has("%s,%s" % [x, y]) or wall_tiles.has("%s,%s" % [x, y])
+	var key := "%s,%s" % [x, y]
+	return unit_at(x, y) >= 0 or obstacle_tiles.has(key) or wall_tiles.has(key) or (door_tiles.has(key) and not open_door_tiles.has(key))
 
 func cover_penalty(x: int, y: int) -> int:
 	return 25 if cover_tiles.has("%s,%s" % [x, y]) else 0
@@ -1433,7 +1579,8 @@ func has_line_of_sight(ax: int, ay: int, bx: int, by: int) -> bool:
 		var t := float(step) / float(steps)
 		var x := roundi(lerp(float(ax), float(bx), t))
 		var y := roundi(lerp(float(ay), float(by), t))
-		if obstacle_tiles.has("%s,%s" % [x, y]) or wall_tiles.has("%s,%s" % [x, y]):
+		var key := "%s,%s" % [x, y]
+		if obstacle_tiles.has(key) or wall_tiles.has(key) or (door_tiles.has(key) and not open_door_tiles.has(key)):
 			return false
 	return true
 
@@ -1450,7 +1597,7 @@ func find_path(start: Vector2i, goal: Vector2i, max_steps: int) -> Array:
 		for next in [Vector2i(current.x + 1, current.y), Vector2i(current.x - 1, current.y), Vector2i(current.x, current.y + 1), Vector2i(current.x, current.y - 1)]:
 			if next.x < 0 or next.y < 0 or next.x >= BOARD_W or next.y >= BOARD_H:
 				continue
-			if is_blocked(next.x, next.y) and next != goal:
+			if is_blocked(next.x, next.y):
 				continue
 			var new_cost := int(cost[current]) + 1
 			if new_cost > max_steps:
@@ -1509,6 +1656,10 @@ func spawn_float_text(x: int, y: int, text: String, color: Color) -> void:
 	tween.tween_callback(label.queue_free)
 
 func play_menu_music() -> void:
+	if not music_enabled:
+		music.stop()
+		current_music_mode = "menu"
+		return
 	if current_music_mode == "menu" and music.playing:
 		return
 	current_music_mode = "menu"
@@ -1519,6 +1670,10 @@ func play_menu_music() -> void:
 	music.play()
 
 func play_battle_music() -> void:
+	if not music_enabled:
+		music.stop()
+		current_music_mode = "battle"
+		return
 	if current_music_mode == "battle" and music.playing:
 		return
 	current_music_mode = "battle"
@@ -1565,6 +1720,8 @@ func add_log(text: String) -> void:
 	log_label.append_text(text + "\n")
 
 func play_sfx(path: String) -> void:
+	if not sfx_enabled:
+		return
 	sfx.stream = load(path)
 	sfx.volume_db = -8
 	sfx.play()
