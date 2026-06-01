@@ -11,16 +11,21 @@ const BOARD_W := 12
 const BOARD_H := 9
 const ISO_ORIGIN := Vector2(430, 64)
 const COLORS := {
-	"bg": Color("#101415"),
-	"panel": Color("#171d1f"),
-	"panel_2": Color("#202729"),
-	"line": Color("#344044"),
-	"text": Color("#eef3ef"),
-	"muted": Color("#aeb9b2"),
+	"bg": Color("#070909"),
+	"bg_2": Color("#101412"),
+	"panel": Color("#121716"),
+	"panel_2": Color("#1a2120"),
+	"panel_deep": Color("#090d0c"),
+	"line": Color("#3d4743"),
+	"line_hot": Color("#7c241f"),
+	"text": Color("#e7eadf"),
+	"muted": Color("#9aa39a"),
 	"hero": Color("#74c7ec"),
-	"enemy": Color("#ff7d5b"),
-	"accent": Color("#bfd66f"),
-	"tile": Color("#2b3938"),
+	"enemy": Color("#d94b3f"),
+	"accent": Color("#d4d7a0"),
+	"warning": Color("#b52a23"),
+	"bio": Color("#78b96d"),
+	"tile": Color("#222d2a"),
 	"tile_alt": Color("#263230"),
 	"cover": Color("#48533c")
 }
@@ -56,6 +61,7 @@ var objective_tiles := {}
 @onready var mission_list: VBoxContainer = %MissionList
 @onready var campaign_stats: Label = %CampaignStats
 @onready var mission_title: Label = %MissionTitle
+@onready var battle_preview: Panel = get_node("StartScreen/BattlePreview")
 @onready var battle_grid: Node2D = %BattleGrid
 @onready var unit_panel: VBoxContainer = %UnitPanel
 @onready var log_label: RichTextLabel = %LogLabel
@@ -74,6 +80,16 @@ func _ready() -> void:
 	render_factions()
 	render_missions()
 	show_title()
+
+func _draw() -> void:
+	var rect := Rect2(Vector2.ZERO, size)
+	draw_rect(rect, COLORS.bg)
+	for y in range(0, int(size.y), 4):
+		draw_line(Vector2(0, y), Vector2(size.x, y), Color(1, 1, 1, 0.018), 1.0)
+	draw_rect(Rect2(0, 0, 10, size.y), Color(COLORS.warning, 0.34))
+	draw_rect(Rect2(size.x - 10, 0, 10, size.y), Color(COLORS.warning, 0.18))
+	draw_line(Vector2(24, 22), Vector2(size.x - 24, 22), Color(COLORS.line_hot, 0.42), 2.0)
+	draw_line(Vector2(24, size.y - 22), Vector2(size.x - 24, size.y - 22), Color(COLORS.line, 0.35), 1.0)
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -106,42 +122,61 @@ func apply_visual_theme() -> void:
 	add_theme_color_override("font_color", COLORS.text)
 	var root_style := make_panel_style(COLORS.bg, COLORS.line, 0)
 	add_theme_stylebox_override("panel", root_style)
-	title_screen.add_theme_constant_override("separation", 18)
-	start_screen.add_theme_constant_override("separation", 18)
-	battle_screen.add_theme_constant_override("separation", 18)
-	battle_area.add_theme_stylebox_override("panel", make_panel_style(Color(0.06, 0.08, 0.08, 0.96), Color(1, 1, 1, 0.08), 0))
-	side_panel.custom_minimum_size = Vector2(340, 0)
-	log_label.add_theme_stylebox_override("normal", make_panel_style(Color(0.04, 0.05, 0.05, 0.86), COLORS.line, 6))
+	title_screen.add_theme_constant_override("separation", 16)
+	title_screen.alignment = BoxContainer.ALIGNMENT_CENTER
+	start_screen.add_theme_constant_override("separation", 14)
+	battle_screen.add_theme_constant_override("separation", 12)
+	battle_area.add_theme_stylebox_override("panel", make_panel_style(Color(0.03, 0.045, 0.043, 0.98), Color(COLORS.line_hot, 0.55), 0))
+	battle_preview.add_theme_stylebox_override("panel", make_panel_style(Color(0.025, 0.035, 0.034, 0.98), Color(COLORS.line_hot, 0.5), 0))
+	side_panel.custom_minimum_size = Vector2(360, 0)
+	unit_panel.add_theme_constant_override("separation", 6)
+	log_label.add_theme_stylebox_override("normal", make_panel_style(Color(0.025, 0.03, 0.03, 0.94), Color(COLORS.line, 0.8), 2))
 	log_label.add_theme_color_override("default_color", COLORS.muted)
+	log_label.bbcode_enabled = true
+	log_label.scroll_following = true
+	get_node("TitleScreen/Title").add_theme_font_size_override("font_size", 52)
+	get_node("TitleScreen/Title").add_theme_color_override("font_color", COLORS.warning)
+	get_node("TitleScreen/Subtitle").add_theme_color_override("font_color", COLORS.muted)
+	get_node("TitleScreen/Subtitle").add_theme_font_size_override("font_size", 18)
+	get_node("TitleScreen/Continue").text = "ENTRAR AL INCIDENTE"
+	get_node("StartScreen/Left/Start").text = "EMPEZAR MISION"
 	style_tree(self)
+	queue_redraw()
 
 func style_tree(node: Node) -> void:
 	if node is Label:
 		node.add_theme_color_override("font_color", COLORS.text)
+		node.add_theme_font_size_override("font_size", 15)
 	if node is Button:
 		style_button(node)
 	if node is Panel:
-		node.add_theme_stylebox_override("panel", make_panel_style(COLORS.panel, Color(1, 1, 1, 0.08), 0))
+		node.add_theme_stylebox_override("panel", make_panel_style(COLORS.panel, Color(COLORS.line, 0.65), 0))
 	for child in node.get_children():
 		style_tree(child)
 
 func style_button(button: Button, primary := false) -> void:
-	button.add_theme_stylebox_override("normal", make_panel_style(COLORS.accent if primary else COLORS.panel_2, COLORS.line, 6))
-	button.add_theme_stylebox_override("hover", make_panel_style((COLORS.accent if primary else COLORS.panel_2).lightened(0.1), COLORS.accent, 6))
-	button.add_theme_stylebox_override("pressed", make_panel_style((COLORS.accent if primary else COLORS.panel_2).darkened(0.12), COLORS.accent, 6))
-	button.add_theme_color_override("font_color", Color("#172022") if primary else COLORS.text)
-	button.custom_minimum_size = Vector2(0, 40)
+	var normal := COLORS.warning if primary else COLORS.panel_2
+	var border := COLORS.accent if primary else COLORS.line
+	button.add_theme_stylebox_override("normal", make_panel_style(normal, border, 1))
+	button.add_theme_stylebox_override("hover", make_panel_style(normal.lightened(0.12), COLORS.accent, 1))
+	button.add_theme_stylebox_override("pressed", make_panel_style(normal.darkened(0.16), COLORS.line_hot, 1))
+	button.add_theme_stylebox_override("disabled", make_panel_style(Color("#151817"), Color("#252b29"), 1))
+	button.add_theme_color_override("font_color", COLORS.text)
+	button.add_theme_color_override("font_disabled_color", Color(COLORS.muted, 0.52))
+	button.add_theme_font_size_override("font_size", 14)
+	button.custom_minimum_size = Vector2(0, 36)
 
 func make_panel_style(color: Color, border: Color, radius: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
 	style.border_color = border
 	style.set_border_width_all(1)
+	style.border_width_left = 3
 	style.set_corner_radius_all(radius)
-	style.content_margin_left = 10
-	style.content_margin_right = 10
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 7
+	style.content_margin_bottom = 7
 	return style
 
 func load_json(path: String) -> Dictionary:
@@ -166,6 +201,7 @@ func show_menu() -> void:
 	start_screen.visible = true
 	battle_screen.visible = false
 	render_missions()
+	render_menu_preview()
 
 func start_battle() -> void:
 	title_screen.visible = false
@@ -266,7 +302,7 @@ func render_factions() -> void:
 		child.queue_free()
 	for faction_id in data.factions.keys():
 		var button := Button.new()
-		button.text = data.factions[faction_id].name
+		button.text = "[ %s ]" % str(data.factions[faction_id].name).to_upper()
 		style_button(button, faction_id == selected_faction)
 		button.pressed.connect(func():
 			selected_faction = faction_id
@@ -279,8 +315,8 @@ func render_missions() -> void:
 	for child in mission_list.get_children():
 		child.queue_free()
 	var progress := get_progress(selected_faction)
-	campaign_stats.text = "%s | Victorias: %s | Creditos: $%s | Investigacion: %s" % [
-		data.factions[selected_faction].name,
+	campaign_stats.text = "ARCHIVO DE CAMPANA\n%s  //  VICTORIAS %s  //  CREDITOS $%s  //  INVESTIGACION %s" % [
+		str(data.factions[selected_faction].name).to_upper(),
 		progress.wins,
 		progress.credits,
 		progress.research
@@ -288,17 +324,60 @@ func render_missions() -> void:
 	for i in range(data.missions.size()):
 		var mission = data.missions[i]
 		var button := Button.new()
-		button.text = "%s. %s" % [i + 1, mission.name]
+		button.text = "%02d  %s" % [i + 1, str(mission.name).to_upper()]
 		button.disabled = i > progress.unlockedMission
 		style_button(button, i == selected_mission)
 		button.pressed.connect(func(index := i):
 			selected_mission = index
 			mission_title.text = data.missions[selected_mission].briefing
 			render_missions()
+			render_menu_preview()
 			play_sfx("res://assets/audio/ui.wav")
 		)
 		mission_list.add_child(button)
-	mission_title.text = data.missions[selected_mission].briefing
+	mission_title.text = "%s\n%s" % [str(data.missions[selected_mission].name).to_upper(), data.missions[selected_mission].briefing]
+
+func render_menu_preview() -> void:
+	for child in battle_preview.get_children():
+		child.queue_free()
+	var mission = data.missions[selected_mission]
+	var map = mission.get("map", {})
+	var header := Label.new()
+	header.position = Vector2(28, 24)
+	header.size = Vector2(520, 34)
+	header.text = "EXPEDIENTE: %s" % str(mission.name).to_upper()
+	header.add_theme_font_size_override("font_size", 22)
+	header.add_theme_color_override("font_color", COLORS.warning)
+	battle_preview.add_child(header)
+	var briefing := Label.new()
+	briefing.position = Vector2(28, 66)
+	briefing.size = Vector2(560, 90)
+	briefing.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	briefing.text = "%s\nOBJETIVO: %s\nZONA: %s" % [mission.briefing, objective_text(mission.get("objective", "eliminate")), str(map.get("theme", "unknown")).to_upper()]
+	briefing.add_theme_color_override("font_color", COLORS.text)
+	battle_preview.add_child(briefing)
+	var grid_origin := Vector2(70, 190)
+	for y in range(5):
+		for x in range(8):
+			var tile := Polygon2D.new()
+			var p := grid_origin + Vector2((x - y) * 30.0, (x + y) * 15.0)
+			tile.position = p
+			tile.polygon = PackedVector2Array([Vector2(0, -14), Vector2(28, 0), Vector2(0, 14), Vector2(-28, 0)])
+			tile.color = Color("#222c29") if (x + y) % 2 == 0 else Color("#1a2220")
+			tile.z_index = y * 8 + x
+			battle_preview.add_child(tile)
+	var red_line := ColorRect.new()
+	red_line.position = Vector2(28, 160)
+	red_line.size = Vector2(560, 2)
+	red_line.color = Color(COLORS.line_hot, 0.9)
+	battle_preview.add_child(red_line)
+	var stamp := Label.new()
+	stamp.position = Vector2(28, 428)
+	stamp.size = Vector2(560, 60)
+	stamp.text = "BIOHAZARD RESPONSE // NO COMERCIAL FAN BUILD"
+	stamp.add_theme_font_size_override("font_size", 16)
+	stamp.add_theme_color_override("font_color", Color(COLORS.accent, 0.8))
+	battle_preview.add_child(stamp)
 
 func get_progress(faction_id: String) -> Dictionary:
 	if not campaign.has(faction_id):
@@ -412,6 +491,11 @@ func tile_art_path(x: int, y: int) -> String:
 			return "res://assets/painted/tiles/attack_tile.png"
 		if current_mode == "activate" and d <= 1:
 			return "res://assets/painted/tiles/move_tile.png"
+	var theme := str(active_map.get("theme", "lab"))
+	if theme == "street":
+		return "res://assets/painted/tiles/floor_street.png"
+	if theme == "village":
+		return "res://assets/painted/tiles/floor_mansion.png" if (x + y) % 3 == 0 else "res://assets/painted/tiles/floor_street.png"
 	return "res://assets/painted/tiles/floor_lab.png" if (x + y) % 2 == 0 else "res://assets/painted/tiles/floor_lab_alt.png"
 
 func diamond_points(width: float, height: float) -> PackedVector2Array:
@@ -493,7 +577,9 @@ func render_unit_panel() -> void:
 	for child in unit_panel.get_children():
 		child.queue_free()
 	var title := Label.new()
-	title.text = "Combate terminado" if battle_over else "Ronda %s/%s | Turno: %s | Modo: %s" % [round_number, mission_turn_limit, turn_side, current_mode]
+	title.text = "COMBATE TERMINADO" if battle_over else "RONDA %s/%s  //  TURNO %s  //  %s" % [round_number, mission_turn_limit, str(turn_side).to_upper(), str(current_mode).to_upper()]
+	title.add_theme_color_override("font_color", COLORS.accent)
+	title.add_theme_font_size_override("font_size", 16)
 	unit_panel.add_child(title)
 	if battle_over:
 		render_result_panel()
@@ -501,7 +587,7 @@ func render_unit_panel() -> void:
 	render_objective_panel()
 	render_selected_unit_panel()
 	var move_button := Button.new()
-	move_button.text = "Mover"
+	move_button.text = "MOVER"
 	move_button.disabled = battle_over
 	style_button(move_button, current_mode == "move")
 	move_button.pressed.connect(func():
@@ -511,7 +597,7 @@ func render_unit_panel() -> void:
 	)
 	unit_panel.add_child(move_button)
 	var attack_button := Button.new()
-	attack_button.text = "Atacar"
+	attack_button.text = "ATACAR"
 	attack_button.disabled = battle_over
 	style_button(attack_button, current_mode == "attack")
 	attack_button.pressed.connect(func():
@@ -522,19 +608,19 @@ func render_unit_panel() -> void:
 	unit_panel.add_child(attack_button)
 	render_weapon_buttons()
 	var wait_button := Button.new()
-	wait_button.text = "Esperar"
+	wait_button.text = "ESPERAR"
 	wait_button.disabled = battle_over
 	style_button(wait_button)
 	wait_button.pressed.connect(wait_selected_unit)
 	unit_panel.add_child(wait_button)
 	var end_button := Button.new()
-	end_button.text = "Terminar turno"
+	end_button.text = "TERMINAR TURNO"
 	end_button.disabled = battle_over
 	style_button(end_button, true)
 	end_button.pressed.connect(start_enemy_turn)
 	unit_panel.add_child(end_button)
 	var overwatch_button := Button.new()
-	overwatch_button.text = "Overwatch"
+	overwatch_button.text = "OVERWATCH"
 	overwatch_button.disabled = battle_over
 	style_button(overwatch_button)
 	overwatch_button.pressed.connect(enable_overwatch)
@@ -548,7 +634,7 @@ func render_unit_panel() -> void:
 			unit.max_hp,
 			unit.ap,
 			unit.side,
-			" | listo" if not acted_units.has(unit.id) else " | sin accion"
+			" | LISTO" if not acted_units.has(unit.id) else " | SIN ACCION"
 		]
 		button.disabled = battle_over or unit.side != "hero" or turn_side != "hero"
 		style_button(button, i == selected_unit)
@@ -565,12 +651,13 @@ func render_objective_panel() -> void:
 	var heroes_left := units.filter(func(unit): return unit.side == "hero").size()
 	var label := Label.new()
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.text = "Objetivo: %s\n%s\nHeroes: %s | Enemigos: %s" % [
+	label.text = "OBJETIVO\n%s\n%s\nHEROES %s  //  INFECTADOS %s" % [
 		objective_text(mission.get("objective", "eliminate")),
 		mission.get("briefing", ""),
 		heroes_left,
 		enemies_left
 	]
+	label.add_theme_color_override("font_color", COLORS.muted)
 	unit_panel.add_child(label)
 
 func render_selected_unit_panel() -> void:
@@ -580,20 +667,21 @@ func render_selected_unit_panel() -> void:
 	var status_text := "Normal" if unit.status.is_empty() else ", ".join(unit.status)
 	var label := Label.new()
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.text = "%s [%s]\nHP %s/%s | AP %s/%s | Estado: %s\nMunicion P:%s E:%s R:%s G:%s B:%s" % [
-		unit.name,
-		unit.role,
+	label.text = "%s  [%s]\nHP %s/%s  //  AP %s/%s  //  %s\nMUNICION  P:%s  E:%s  R:%s  G:%s  B:%s" % [
+		str(unit.name).to_upper(),
+		str(unit.role).to_upper(),
 		unit.hp,
 		unit.max_hp,
 		unit.ap,
 		unit.max_ap,
-		status_text,
+		str(status_text).to_upper(),
 		ammo_count(unit, "pistol"),
 		ammo_count(unit, "shotgun"),
 		ammo_count(unit, "rifle"),
 		ammo_count(unit, "grenade"),
 		ammo_count(unit, "medkit")
 	]
+	label.add_theme_color_override("font_color", COLORS.text)
 	unit_panel.add_child(label)
 
 func render_weapon_buttons() -> void:
@@ -601,7 +689,7 @@ func render_weapon_buttons() -> void:
 		var weapon = data.weapons[weapon_id]
 		var button := Button.new()
 		var shots_left := selected_unit_ammo(weapon_id)
-		button.text = "%s x%s | D%s R%s" % [weapon.name, shots_left, weapon.damage, weapon.range]
+		button.text = "%s x%s  |  D%s R%s" % [str(weapon.name).to_upper(), shots_left, weapon.damage, weapon.range]
 		button.disabled = selected_unit < 0 or shots_left <= 0 or turn_side != "hero"
 		style_button(button, current_mode in ["attack", "grenade"] and selected_weapon == weapon_id)
 		button.pressed.connect(func(id: String = weapon_id):
@@ -613,7 +701,7 @@ func render_weapon_buttons() -> void:
 		unit_panel.add_child(button)
 	var medkit = data.weapons.medkit
 	var heal_button := Button.new()
-	heal_button.text = "%s x%s | +%s" % [medkit.name, selected_unit_ammo("medkit"), medkit.heal]
+	heal_button.text = "%s x%s  |  +%s" % [str(medkit.name).to_upper(), selected_unit_ammo("medkit"), medkit.heal]
 	heal_button.disabled = selected_unit < 0 or selected_unit_ammo("medkit") <= 0 or turn_side != "hero"
 	style_button(heal_button, current_mode == "heal")
 	heal_button.pressed.connect(func():
@@ -625,7 +713,7 @@ func render_weapon_buttons() -> void:
 	unit_panel.add_child(heal_button)
 	if data.missions[selected_mission].get("objective", "eliminate") == "activate":
 		var objective_button := Button.new()
-		objective_button.text = "Activar objetivo" if not objective_activated else "Objetivo activado"
+		objective_button.text = "ACTIVAR OBJETIVO" if not objective_activated else "OBJETIVO ACTIVADO"
 		objective_button.disabled = selected_unit < 0 or objective_activated or not selected_unit_near_objective()
 		style_button(objective_button, current_mode == "activate")
 		objective_button.pressed.connect(activate_objective)
@@ -647,23 +735,23 @@ func render_result_panel() -> void:
 	var summary := Label.new()
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if battle_result == "victory":
-		summary.text = "Victoria en %s\nRecompensa: $%s / Investigacion %s" % [mission.name, mission.rewardCredits, mission.rewardResearch]
+		summary.text = "VICTORIA EN %s\nRECOMPENSA: $%s / INVESTIGACION %s" % [str(mission.name).to_upper(), mission.rewardCredits, mission.rewardResearch]
 	else:
-		summary.text = "Derrota en %s\nReagrupa al escuadron y vuelve a intentarlo." % mission.name
+		summary.text = "DERROTA EN %s\nReagrupa al escuadron y vuelve a intentarlo." % str(mission.name).to_upper()
 	unit_panel.add_child(summary)
 	var retry_button := Button.new()
-	retry_button.text = "Reintentar"
+	retry_button.text = "REINTENTAR"
 	style_button(retry_button)
 	retry_button.pressed.connect(start_battle)
 	unit_panel.add_child(retry_button)
 	var menu_button := Button.new()
-	menu_button.text = "Volver al menu"
+	menu_button.text = "VOLVER AL MENU"
 	style_button(menu_button)
 	menu_button.pressed.connect(show_menu)
 	unit_panel.add_child(menu_button)
 	if battle_result == "victory" and selected_mission < data.missions.size() - 1:
 		var next_button := Button.new()
-		next_button.text = "Siguiente mision"
+		next_button.text = "SIGUIENTE MISION"
 		style_button(next_button, true)
 		next_button.pressed.connect(func():
 			selected_mission += 1

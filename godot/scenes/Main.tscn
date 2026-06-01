@@ -29,14 +29,14 @@ offset_bottom = -80.0
 theme_override_constants/separation = 18
 
 [node name="Title" type="Label" parent="TitleScreen"]
-text = "Resident Evil: Biohazard Tactics"
+text = "BIOHAZARD TACTICS"
 theme_override_font_sizes/font_size = 48
 
 [node name="Subtitle" type="Label" parent="TitleScreen"]
-text = "Prototipo Godot 2.5D tactico"
+text = "SURVIVAL HORROR TACTICO // FAN BUILD"
 
 [node name="Continue" type="Button" parent="TitleScreen"]
-text = "Continuar"
+text = "ENTRAR AL INCIDENTE"
 
 [node name="StartScreen" type="HBoxContainer" parent="."]
 unique_name_in_owner = true
@@ -63,13 +63,13 @@ unique_name_in_owner = true
 [node name="MissionTitle" type="Label" parent="StartScreen/Left"]
 unique_name_in_owner = true
 autowrap_mode = 2
-text = "Mision"
+text = "Expediente"
 
 [node name="MissionList" type="VBoxContainer" parent="StartScreen/Left"]
 unique_name_in_owner = true
 
 [node name="Start" type="Button" parent="StartScreen/Left"]
-text = "Iniciar mision"
+text = "EMPEZAR MISION"
 
 [node name="BattlePreview" type="Panel" parent="StartScreen"]
 size_flags_horizontal = 3
