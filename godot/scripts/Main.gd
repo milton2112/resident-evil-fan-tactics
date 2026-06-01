@@ -550,6 +550,7 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 	unit_view.setup(unit)
 	unit_view.set_selected(index == selected_unit)
 	unit_view.get_node("HpBar").color = accent
+	draw_status_badges(holder, unit)
 	var name_label := Label.new()
 	name_label.text = unit.name
 	name_label.position = Vector2(-40, 49)
@@ -565,6 +566,34 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 		selection.default_color = COLORS.accent
 		selection.z_index = -1
 		holder.add_child(selection)
+
+func draw_status_badges(holder: Node2D, unit: Dictionary) -> void:
+	var badges := []
+	if unit.status.has("overwatch"):
+		badges.append(["OW", COLORS.accent])
+	if unit.status.has("bleeding"):
+		badges.append(["BL", COLORS.warning])
+	if unit.status.has("poisoned"):
+		badges.append(["PX", COLORS.bio])
+	if unit.ap <= 0 and unit.side == "hero":
+		badges.append(["AP", COLORS.muted])
+	for i in range(badges.size()):
+		var badge = badges[i]
+		var box := ColorRect.new()
+		box.position = Vector2(-38 + i * 27, -82)
+		box.size = Vector2(24, 14)
+		box.color = Color(badge[1], 0.86)
+		box.z_index = 20
+		holder.add_child(box)
+		var text := Label.new()
+		text.text = badge[0]
+		text.position = box.position + Vector2(1, -2)
+		text.size = box.size
+		text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		text.add_theme_font_size_override("font_size", 9)
+		text.add_theme_color_override("font_color", COLORS.bg)
+		text.z_index = 21
+		holder.add_child(text)
 
 func unit_body_points(unit: Dictionary) -> PackedVector2Array:
 	if unit.sprite == "cerberus.svg" or unit.sprite == "licker.svg":
@@ -689,7 +718,8 @@ func render_weapon_buttons() -> void:
 		var weapon = data.weapons[weapon_id]
 		var button := Button.new()
 		var shots_left := selected_unit_ammo(weapon_id)
-		button.text = "%s x%s  |  D%s R%s" % [str(weapon.name).to_upper(), shots_left, weapon.damage, weapon.range]
+		var hit_text := "100%" if weapon_id == "grenade" else "%s%%" % selected_weapon_accuracy(weapon_id)
+		button.text = "%s x%s  |  D%s R%s  |  %s" % [str(weapon.name).to_upper(), shots_left, weapon.damage, weapon.range, hit_text]
 		button.disabled = selected_unit < 0 or shots_left <= 0 or turn_side != "hero"
 		style_button(button, current_mode in ["attack", "grenade"] and selected_weapon == weapon_id)
 		button.pressed.connect(func(id: String = weapon_id):
@@ -718,6 +748,32 @@ func render_weapon_buttons() -> void:
 		style_button(objective_button, current_mode == "activate")
 		objective_button.pressed.connect(activate_objective)
 		unit_panel.add_child(objective_button)
+
+func selected_weapon_accuracy(weapon_id: String) -> int:
+	if not data.weapons.has(weapon_id):
+		return 0
+	var base := int(data.weapons[weapon_id].get("accuracy", 80))
+	if selected_unit < 0 or selected_unit >= units.size():
+		return base
+	var target := best_visible_enemy_for_unit(units[selected_unit], int(data.weapons[weapon_id].get("range", 4)))
+	if target < 0:
+		return base
+	return clamp(base - cover_penalty(units[target].x, units[target].y), 15, 100)
+
+func best_visible_enemy_for_unit(unit: Dictionary, attack_range: int) -> int:
+	var best := -1
+	var best_hp := 9999
+	for i in range(units.size()):
+		if units[i].side == unit.side:
+			continue
+		if distance_xy(unit.x, unit.y, units[i].x, units[i].y) > attack_range:
+			continue
+		if not has_line_of_sight(unit.x, unit.y, units[i].x, units[i].y):
+			continue
+		if int(units[i].hp) < best_hp:
+			best = i
+			best_hp = int(units[i].hp)
+	return best
 
 func objective_text(objective: String) -> String:
 	match objective:
@@ -806,6 +862,7 @@ func try_move_selected(x: int, y: int) -> void:
 	unit.ap -= 1
 	mark_if_spent(unit)
 	add_log("%s avanza." % unit.name)
+	spawn_float_text(unit.x, unit.y, "-1 AP", COLORS.muted)
 	play_sfx("res://assets/audio/step.wav")
 	select_next_ready_hero()
 	render_battle()
@@ -820,8 +877,12 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 	var weapon = data.weapons.get(selected_weapon, data.weapons.pistol) if attacker.side == "hero" else {}
 	var attack_range = int(weapon.get("range", attacker.range))
 	if distance_xy(attacker.x, attacker.y, target.x, target.y) > attack_range:
+		if attacker.side == "hero":
+			add_log("Objetivo fuera de rango para %s." % data.weapons[selected_weapon].name)
 		return
 	if not has_line_of_sight(attacker.x, attacker.y, target.x, target.y):
+		if attacker.side == "hero":
+			add_log("Linea de vision bloqueada.")
 		return
 	if attacker.side == "hero" and not consume_ammo(attacker, selected_weapon):
 		add_log("%s no tiene municion para %s." % [attacker.name, data.weapons[selected_weapon].name])
@@ -850,6 +911,7 @@ func try_attack(attacker_index: int, target_index: int) -> void:
 	attacker.ap -= 1
 	mark_if_spent(attacker)
 	spawn_effect(target.x, target.y, "hit")
+	spawn_float_text(target.x, target.y, "-%s" % damage, COLORS.warning if attacker.side == "hero" else COLORS.enemy)
 	add_log("%s ataca a %s por %s." % [attacker.name, target.name, damage])
 	play_sfx("res://assets/audio/shot.wav" if attacker.side == "hero" else "res://assets/audio/bite.wav")
 	if target.hp <= 0:
@@ -904,6 +966,7 @@ func try_grenade(attacker_index: int, target_index: int) -> void:
 	for i in range(units.size() - 1, -1, -1):
 		if units[i].side != attacker.side and distance_xy(units[i].x, units[i].y, target.x, target.y) <= 1:
 			units[i].hp -= 4
+			spawn_float_text(units[i].x, units[i].y, "-4", COLORS.warning)
 			if not units[i].status.has("bleeding"):
 				units[i].status.append("bleeding")
 			if units[i].hp <= 0:
@@ -935,6 +998,7 @@ func try_heal(healer_index: int, target_index: int) -> void:
 	target.hp = min(target.max_hp, target.hp + 5)
 	target.status.erase("bleeding")
 	target.status.erase("poisoned")
+	spawn_float_text(target.x, target.y, "+5", COLORS.bio)
 	healer.ap -= 1
 	mark_if_spent(healer)
 	add_log("%s cura a %s." % [healer.name, target.name])
@@ -1002,7 +1066,7 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 	var target = units[target_index]
 	var best_x = enemy.x
 	var best_y = enemy.y
-	var best_score := 999
+	var best_score := 9999
 	var candidates = [[enemy.x + 1, enemy.y], [enemy.x - 1, enemy.y], [enemy.x, enemy.y + 1], [enemy.x, enemy.y - 1]]
 	for candidate in candidates:
 		var x = candidate[0]
@@ -1011,7 +1075,7 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 			continue
 		if is_blocked(x, y):
 			continue
-		var score = distance_xy(x, y, target.x, target.y)
+		var score = enemy_move_score(enemy, target, x, y)
 		if score < best_score:
 			best_score = score
 			best_x = x
@@ -1019,8 +1083,27 @@ func step_enemy_toward(enemy_index: int, target_index: int) -> void:
 	enemy.x = best_x
 	enemy.y = best_y
 	add_log("%s se acerca." % enemy.name)
+	spawn_float_text(enemy.x, enemy.y, str(enemy.role).to_upper(), COLORS.enemy)
 	play_sfx("res://assets/audio/step.wav")
 	trigger_overwatch(enemy_index)
+
+func enemy_move_score(enemy: Dictionary, target: Dictionary, x: int, y: int) -> int:
+	var distance := distance_xy(x, y, target.x, target.y)
+	var score := distance * 10
+	if enemy.role == "runner":
+		score = distance * 6
+	if enemy.role == "spitter":
+		var ideal_range := 3
+		score = abs(distance - ideal_range) * 12
+		if cover_tiles.has("%s,%s" % [x, y]):
+			score -= 8
+	if enemy.role == "boss":
+		score = distance * 8
+		if cover_tiles.has("%s,%s" % [x, y]):
+			score += 6
+	if enemy.role == "ambusher" and cover_tiles.has("%s,%s" % [x, y]):
+		score -= 10
+	return score
 
 func check_result() -> bool:
 	var heroes := units.filter(func(unit): return unit.side == "hero")
@@ -1233,6 +1316,21 @@ func spawn_effect(x: int, y: int, _kind: String) -> void:
 	tween.tween_property(effect, "scale", Vector2(1.7, 1.7), 0.18)
 	tween.parallel().tween_property(effect, "modulate:a", 0.0, 0.24)
 	tween.tween_callback(effect.queue_free)
+
+func spawn_float_text(x: int, y: int, text: String, color: Color) -> void:
+	var label := Label.new()
+	label.text = text
+	label.position = iso_pos(x, y) + Vector2(-24, -76)
+	label.size = Vector2(64, 22)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", color)
+	label.z_index = 980
+	battle_grid.add_child(label)
+	var tween := create_tween()
+	tween.tween_property(label, "position", label.position + Vector2(0, -26), 0.45)
+	tween.parallel().tween_property(label, "modulate:a", 0.0, 0.45)
+	tween.tween_callback(label.queue_free)
 
 func add_log(text: String) -> void:
 	log_label.append_text(text + "\n")
