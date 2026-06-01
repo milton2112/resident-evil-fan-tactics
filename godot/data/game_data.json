@@ -1,114 +1,677 @@
 {
-  "weapons": {
-    "pistol": { "name": "Pistola", "damage": 3, "range": 4, "ammo": 12, "accuracy": 82, "crit": 12, "type": "bullet" },
-    "shotgun": { "name": "Escopeta", "damage": 5, "range": 2, "ammo": 6, "accuracy": 72, "crit": 20, "type": "bullet" },
-    "rifle": { "name": "Rifle", "damage": 4, "range": 6, "ammo": 8, "accuracy": 88, "crit": 16, "type": "bullet" },
-    "grenade": { "name": "Granada", "damage": 4, "range": 4, "ammo": 1, "accuracy": 100, "crit": 0, "type": "explosive" },
-    "medkit": { "name": "Botiquin", "heal": 5, "range": 1, "ammo": 1, "type": "support" }
-  },
-  "factions": {
-    "bsaa": { "name": "BSAA", "special": "Granada de contencion" },
-    "dso": { "name": "DSO", "special": "Disparo perforante" },
-    "houndwolf": { "name": "Hound Wolf", "special": "Carga explosiva" },
-    "umbrella": { "name": "Umbrella", "special": "Liberar mutageno", "economy": true }
-  },
-  "campaign": {
-    "nodes": [
-      { "id": "raccoon-outskirts", "x": 0, "y": 1, "next": ["penamstan-port"] },
-      { "id": "penamstan-port", "x": 1, "y": 0, "next": ["valdelobos-night"] },
-      { "id": "valdelobos-night", "x": 2, "y": 1, "next": [] }
-    ],
-    "upgrades": [
-      { "id": "armor", "name": "Chalecos reforzados", "credits": 160000, "research": 1, "effect": "max_hp" },
-      { "id": "ammo", "name": "Municion extra", "credits": 120000, "research": 1, "effect": "ammo" },
-      { "id": "squad", "name": "Escuadron ampliado", "credits": 300000, "research": 3, "effect": "squad" }
-    ]
-  },
-  "missions": [
-    {
-      "id": "raccoon-outskirts",
-      "name": "Afueras de Raccoon City",
-      "briefing": "Contener el brote inicial y recuperar el punto de extraccion.",
-      "objective": "eliminate",
-      "turnLimit": 10,
-      "rewardCredits": 180000,
-      "rewardResearch": 2,
-      "map": {
-        "theme": "street",
-        "width": 15,
-        "height": 11,
-        "cover": ["2,2", "5,2", "8,2", "11,2", "2,5", "6,5", "9,6", "12,7", "4,9", "8,9"],
-        "obstacles": ["6,3", "9,4", "12,5", "5,8", "10,9"],
-        "walls": ["0,0", "1,0", "2,0", "3,0", "4,0", "8,0", "9,0", "10,0", "11,0", "12,0", "13,0", "14,0", "0,1", "4,1", "8,1", "14,1", "0,2", "4,2", "8,2", "14,2", "0,3", "4,3", "8,3", "14,3", "0,4", "14,4", "0,5", "3,5", "4,5", "8,5", "9,5", "14,5", "0,6", "14,6", "0,7", "6,7", "7,7", "11,7", "14,7", "0,8", "11,8", "14,8", "0,9", "11,9", "14,9", "0,10", "1,10", "2,10", "3,10", "4,10", "5,10", "9,10", "10,10", "11,10", "12,10", "13,10", "14,10"],
-        "doors": ["4,4", "8,4", "11,8"],
-        "heroes": [
-          { "id": "h1", "name": "Chris", "x": 1, "y": 2, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault", "loadout": { "pistol": 12, "shotgun": 6, "rifle": 4, "grenade": 1, "medkit": 1 } },
-          { "id": "h2", "name": "Jill", "x": 1, "y": 4, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout", "loadout": { "pistol": 14, "shotgun": 4, "rifle": 4, "grenade": 1, "medkit": 2 } },
-          { "id": "h3", "name": "Leon", "x": 1, "y": 7, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman", "loadout": { "pistol": 10, "shotgun": 3, "rifle": 8, "grenade": 1, "medkit": 1 } }
-        ],
-        "enemies": [
-          { "id": "e1", "name": "Shambler", "x": 13, "y": 2, "hp": 7, "move": 3, "damage": 2, "range": 1, "art": "zombie.png", "role": "slow" },
-          { "id": "e2", "name": "Runner", "x": 12, "y": 6, "hp": 6, "move": 5, "damage": 2, "range": 1, "art": "cerberus.png", "role": "runner" },
-          { "id": "e3", "name": "Crawler", "x": 13, "y": 8, "hp": 10, "move": 4, "damage": 3, "range": 1, "art": "licker.png", "role": "ambusher" }
-        ]
-      }
-    },
-    {
-      "id": "penamstan-port",
-      "name": "Puerto de Penamstan",
-      "briefing": "Entrar al puerto, cortar la ruta de infeccion y eliminar hostiles rapidos.",
-      "objective": "activate",
-      "turnLimit": 9,
-      "rewardCredits": 260000,
-      "rewardResearch": 3,
-      "map": {
-        "theme": "lab",
-        "width": 15,
-        "height": 11,
-        "cover": ["2,3", "5,2", "7,2", "10,2", "12,3", "3,6", "6,7", "9,7", "12,8"],
-        "obstacles": ["6,3", "10,4", "4,8", "8,8", "12,6"],
-        "walls": ["0,0", "1,0", "2,0", "3,0", "4,0", "5,0", "6,0", "7,0", "8,0", "9,0", "10,0", "11,0", "12,0", "13,0", "14,0", "0,1", "14,1", "0,2", "4,2", "8,2", "14,2", "0,3", "4,3", "8,3", "14,3", "0,4", "4,4", "14,4", "0,5", "8,5", "9,5", "10,5", "14,5", "0,6", "4,6", "8,6", "14,6", "0,7", "4,7", "14,7", "0,8", "8,8", "14,8", "0,9", "4,9", "8,9", "14,9", "0,10", "1,10", "2,10", "3,10", "4,10", "5,10", "6,10", "7,10", "8,10", "9,10", "10,10", "11,10", "12,10", "13,10", "14,10"],
-        "doors": ["4,5", "8,4", "8,7"],
-        "objectives": ["12,2"],
-        "heroes": [
-          { "id": "h1", "name": "Chris", "x": 1, "y": 3, "hp": 12, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault", "loadout": { "pistol": 10, "shotgun": 6, "rifle": 4, "grenade": 1, "medkit": 1 } },
-          { "id": "h2", "name": "Jill", "x": 1, "y": 5, "hp": 10, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout", "loadout": { "pistol": 14, "shotgun": 4, "rifle": 4, "grenade": 1, "medkit": 2 } },
-          { "id": "h3", "name": "Leon", "x": 2, "y": 8, "hp": 10, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman", "loadout": { "pistol": 10, "shotgun": 3, "rifle": 8, "grenade": 1, "medkit": 1 } }
-        ],
-        "enemies": [
-          { "id": "e1", "name": "Runner", "x": 12, "y": 1, "hp": 6, "move": 5, "damage": 2, "range": 1, "art": "cerberus.png", "role": "runner" },
-          { "id": "e2", "name": "Runner", "x": 13, "y": 6, "hp": 6, "move": 5, "damage": 2, "range": 1, "art": "cerberus.png", "role": "runner" },
-          { "id": "e3", "name": "Spitter", "x": 11, "y": 8, "hp": 9, "move": 3, "damage": 2, "range": 3, "art": "zombie.png", "role": "spitter" }
-        ]
-      }
-    },
-    {
-      "id": "valdelobos-night",
-      "name": "Valdelobos de noche",
-      "briefing": "Sobrevivir a una zona hostil y neutralizar al enemigo pesado.",
-      "objective": "boss",
-      "turnLimit": 12,
-      "rewardCredits": 380000,
-      "rewardResearch": 5,
-      "map": {
-        "theme": "village",
-        "width": 15,
-        "height": 11,
-        "cover": ["2,2", "4,3", "6,2", "8,3", "11,2", "3,6", "6,6", "9,7", "12,8", "5,9"],
-        "obstacles": ["5,1", "7,3", "10,3", "4,8", "8,8", "12,5"],
-        "walls": ["0,0", "1,0", "2,0", "3,0", "4,0", "5,0", "9,0", "10,0", "11,0", "12,0", "13,0", "14,0", "0,1", "5,1", "9,1", "14,1", "0,2", "5,2", "9,2", "14,2", "0,3", "5,3", "14,3", "0,4", "9,4", "10,4", "11,4", "14,4", "0,5", "5,5", "9,5", "14,5", "0,6", "5,6", "14,6", "0,7", "9,7", "14,7", "0,8", "3,8", "4,8", "5,8", "9,8", "14,8", "0,9", "9,9", "14,9", "0,10", "1,10", "2,10", "3,10", "4,10", "5,10", "6,10", "7,10", "8,10", "9,10", "10,10", "11,10", "12,10", "13,10", "14,10"],
-        "doors": ["5,4", "9,3", "9,6"],
-        "heroes": [
-          { "id": "h1", "name": "Chris", "x": 1, "y": 1, "hp": 13, "move": 4, "damage": 3, "range": 4, "art": "chris.png", "role": "assault", "loadout": { "pistol": 12, "shotgun": 7, "rifle": 4, "grenade": 2, "medkit": 1 } },
-          { "id": "h2", "name": "Jill", "x": 1, "y": 4, "hp": 11, "move": 5, "damage": 3, "range": 4, "art": "jill.png", "role": "scout", "loadout": { "pistol": 14, "shotgun": 4, "rifle": 5, "grenade": 1, "medkit": 2 } },
-          { "id": "h3", "name": "Leon", "x": 2, "y": 7, "hp": 11, "move": 4, "damage": 4, "range": 5, "art": "leon.png", "role": "marksman", "loadout": { "pistol": 10, "shotgun": 3, "rifle": 10, "grenade": 1, "medkit": 1 } }
-        ],
-        "enemies": [
-          { "id": "e1", "name": "Brute", "x": 12, "y": 2, "hp": 20, "move": 2, "damage": 4, "range": 1, "art": "tyrant.png", "role": "boss" },
-          { "id": "e2", "name": "Shambler", "x": 11, "y": 6, "hp": 8, "move": 3, "damage": 2, "range": 1, "art": "zombie.png", "role": "slow" },
-          { "id": "e3", "name": "Crawler", "x": 13, "y": 8, "hp": 11, "move": 4, "damage": 3, "range": 1, "art": "licker.png", "role": "ambusher" }
-        ]
-      }
-    }
-  ]
+    "weapons":  {
+                    "pistol":  {
+                                   "name":  "Pistola",
+                                   "damage":  3,
+                                   "range":  4,
+                                   "ammo":  12,
+                                   "accuracy":  82,
+                                   "crit":  12,
+                                   "type":  "bullet"
+                               },
+                    "shotgun":  {
+                                    "name":  "Escopeta",
+                                    "damage":  5,
+                                    "range":  2,
+                                    "ammo":  6,
+                                    "accuracy":  72,
+                                    "crit":  20,
+                                    "type":  "bullet"
+                                },
+                    "rifle":  {
+                                  "name":  "Rifle",
+                                  "damage":  4,
+                                  "range":  6,
+                                  "ammo":  8,
+                                  "accuracy":  88,
+                                  "crit":  16,
+                                  "type":  "bullet"
+                              },
+                    "grenade":  {
+                                    "name":  "Granada",
+                                    "damage":  4,
+                                    "range":  4,
+                                    "ammo":  1,
+                                    "accuracy":  100,
+                                    "crit":  0,
+                                    "type":  "explosive"
+                                },
+                    "medkit":  {
+                                   "name":  "Botiquin",
+                                   "heal":  5,
+                                   "range":  1,
+                                   "ammo":  1,
+                                   "type":  "support"
+                               }
+                },
+    "factions":  {
+                     "bsaa":  {
+                                  "name":  "BSAA",
+                                  "special":  "Granada de contencion"
+                              },
+                     "dso":  {
+                                 "name":  "DSO",
+                                 "special":  "Disparo perforante"
+                             },
+                     "houndwolf":  {
+                                       "name":  "Hound Wolf",
+                                       "special":  "Carga explosiva"
+                                   },
+                     "umbrella":  {
+                                      "name":  "Umbrella",
+                                      "special":  "Liberar mutageno",
+                                      "economy":  true
+                                  }
+                 },
+    "campaign":  {
+                     "nodes":  [
+                                   {
+                                       "id":  "raccoon-outskirts",
+                                       "x":  0,
+                                       "y":  1,
+                                       "next":  [
+                                                    "penamstan-port"
+                                                ]
+                                   },
+                                   {
+                                       "id":  "penamstan-port",
+                                       "x":  1,
+                                       "y":  0,
+                                       "next":  [
+                                                    "valdelobos-night"
+                                                ]
+                                   },
+                                   {
+                                       "id":  "valdelobos-night",
+                                       "x":  2,
+                                       "y":  1,
+                                       "next":  [
+
+                                                ]
+                                   }
+                               ],
+                     "upgrades":  [
+                                      {
+                                          "id":  "armor",
+                                          "name":  "Chalecos reforzados",
+                                          "credits":  160000,
+                                          "research":  1,
+                                          "effect":  "max_hp"
+                                      },
+                                      {
+                                          "id":  "ammo",
+                                          "name":  "Municion extra",
+                                          "credits":  120000,
+                                          "research":  1,
+                                          "effect":  "ammo"
+                                      },
+                                      {
+                                          "id":  "squad",
+                                          "name":  "Escuadron ampliado",
+                                          "credits":  300000,
+                                          "research":  3,
+                                          "effect":  "squad"
+                                      }
+                                  ]
+                 },
+    "missions":  [
+                     {
+                         "id":  "raccoon-outskirts",
+                         "name":  "Afueras de Raccoon City",
+                         "briefing":  "Contener el brote inicial y recuperar el punto de extraccion.",
+                         "objective":  "eliminate",
+                         "turnLimit":  10,
+                         "rewardCredits":  180000,
+                         "rewardResearch":  2,
+                         "map":  {
+                                     "theme":  "street",
+                                     "width":  15,
+                                     "height":  11,
+                                     "cover":  [
+                                                   "2,2",
+                                                   "5,2",
+                                                   "8,2",
+                                                   "11,2",
+                                                   "2,5",
+                                                   "6,5",
+                                                   "9,6",
+                                                   "12,7",
+                                                   "4,9",
+                                                   "8,9"
+                                               ],
+                                     "obstacles":  [
+                                                       "6,3",
+                                                       "9,4",
+                                                       "12,5",
+                                                       "5,8",
+                                                       "10,9"
+                                                   ],
+                                     "walls":  [
+                                                   "0,0",
+                                                   "1,0",
+                                                   "2,0",
+                                                   "3,0",
+                                                   "4,0",
+                                                   "5,0",
+                                                   "6,0",
+                                                   "7,0",
+                                                   "8,0",
+                                                   "9,0",
+                                                   "10,0",
+                                                   "11,0",
+                                                   "12,0",
+                                                   "13,0",
+                                                   "14,0",
+                                                   "0,1",
+                                                   "14,1",
+                                                   "0,2",
+                                                   "14,2",
+                                                   "0,3",
+                                                   "14,3",
+                                                   "0,4",
+                                                   "14,4",
+                                                   "0,5",
+                                                   "14,5",
+                                                   "0,6",
+                                                   "14,6",
+                                                   "0,7",
+                                                   "14,7",
+                                                   "0,8",
+                                                   "14,8",
+                                                   "0,9",
+                                                   "14,9",
+                                                   "0,10",
+                                                   "1,10",
+                                                   "2,10",
+                                                   "3,10",
+                                                   "4,10",
+                                                   "5,10",
+                                                   "6,10",
+                                                   "7,10",
+                                                   "8,10",
+                                                   "9,10",
+                                                   "10,10",
+                                                   "11,10",
+                                                   "12,10",
+                                                   "13,10",
+                                                   "14,10"
+                                               ],
+                                     "doors":  [
+                                                   "4,4",
+                                                   "8,4",
+                                                   "11,8"
+                                               ],
+                                     "heroes":  [
+                                                    {
+                                                        "id":  "h1",
+                                                        "name":  "Chris",
+                                                        "x":  1,
+                                                        "y":  2,
+                                                        "hp":  12,
+                                                        "move":  4,
+                                                        "damage":  3,
+                                                        "range":  4,
+                                                        "art":  "chris.png",
+                                                        "role":  "assault",
+                                                        "loadout":  {
+                                                                        "pistol":  12,
+                                                                        "shotgun":  6,
+                                                                        "rifle":  4,
+                                                                        "grenade":  1,
+                                                                        "medkit":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "id":  "h2",
+                                                        "name":  "Jill",
+                                                        "x":  1,
+                                                        "y":  4,
+                                                        "hp":  10,
+                                                        "move":  5,
+                                                        "damage":  3,
+                                                        "range":  4,
+                                                        "art":  "jill.png",
+                                                        "role":  "scout",
+                                                        "loadout":  {
+                                                                        "pistol":  14,
+                                                                        "shotgun":  4,
+                                                                        "rifle":  4,
+                                                                        "grenade":  1,
+                                                                        "medkit":  2
+                                                                    }
+                                                    },
+                                                    {
+                                                        "id":  "h3",
+                                                        "name":  "Leon",
+                                                        "x":  1,
+                                                        "y":  7,
+                                                        "hp":  10,
+                                                        "move":  4,
+                                                        "damage":  4,
+                                                        "range":  5,
+                                                        "art":  "leon.png",
+                                                        "role":  "marksman",
+                                                        "loadout":  {
+                                                                        "pistol":  10,
+                                                                        "shotgun":  3,
+                                                                        "rifle":  8,
+                                                                        "grenade":  1,
+                                                                        "medkit":  1
+                                                                    }
+                                                    }
+                                                ],
+                                     "enemies":  [
+                                                     {
+                                                         "id":  "e1",
+                                                         "name":  "Shambler",
+                                                         "x":  13,
+                                                         "y":  2,
+                                                         "hp":  7,
+                                                         "move":  3,
+                                                         "damage":  2,
+                                                         "range":  1,
+                                                         "art":  "zombie.png",
+                                                         "role":  "slow"
+                                                     },
+                                                     {
+                                                         "id":  "e2",
+                                                         "name":  "Runner",
+                                                         "x":  12,
+                                                         "y":  6,
+                                                         "hp":  6,
+                                                         "move":  5,
+                                                         "damage":  2,
+                                                         "range":  1,
+                                                         "art":  "cerberus.png",
+                                                         "role":  "runner"
+                                                     },
+                                                     {
+                                                         "id":  "e3",
+                                                         "name":  "Crawler",
+                                                         "x":  13,
+                                                         "y":  8,
+                                                         "hp":  10,
+                                                         "move":  4,
+                                                         "damage":  3,
+                                                         "range":  1,
+                                                         "art":  "licker.png",
+                                                         "role":  "ambusher"
+                                                     }
+                                                 ]
+                                 }
+                     },
+                     {
+                         "id":  "penamstan-port",
+                         "name":  "Puerto de Penamstan",
+                         "briefing":  "Entrar al puerto, cortar la ruta de infeccion y eliminar hostiles rapidos.",
+                         "objective":  "activate",
+                         "turnLimit":  9,
+                         "rewardCredits":  260000,
+                         "rewardResearch":  3,
+                         "map":  {
+                                     "theme":  "lab",
+                                     "width":  15,
+                                     "height":  11,
+                                     "cover":  [
+                                                   "2,3",
+                                                   "5,2",
+                                                   "7,2",
+                                                   "10,2",
+                                                   "12,3",
+                                                   "3,6",
+                                                   "6,7",
+                                                   "9,7",
+                                                   "12,8"
+                                               ],
+                                     "obstacles":  [
+                                                       "6,3",
+                                                       "10,4",
+                                                       "4,8",
+                                                       "8,8",
+                                                       "12,6"
+                                                   ],
+                                     "walls":  [
+                                                   "0,0",
+                                                   "1,0",
+                                                   "2,0",
+                                                   "3,0",
+                                                   "4,0",
+                                                   "5,0",
+                                                   "6,0",
+                                                   "7,0",
+                                                   "8,0",
+                                                   "9,0",
+                                                   "10,0",
+                                                   "11,0",
+                                                   "12,0",
+                                                   "13,0",
+                                                   "14,0",
+                                                   "0,1",
+                                                   "14,1",
+                                                   "0,2",
+                                                   "14,2",
+                                                   "0,3",
+                                                   "14,3",
+                                                   "0,4",
+                                                   "14,4",
+                                                   "0,5",
+                                                   "14,5",
+                                                   "0,6",
+                                                   "14,6",
+                                                   "0,7",
+                                                   "14,7",
+                                                   "0,8",
+                                                   "14,8",
+                                                   "0,9",
+                                                   "14,9",
+                                                   "0,10",
+                                                   "1,10",
+                                                   "2,10",
+                                                   "3,10",
+                                                   "4,10",
+                                                   "5,10",
+                                                   "6,10",
+                                                   "7,10",
+                                                   "8,10",
+                                                   "9,10",
+                                                   "10,10",
+                                                   "11,10",
+                                                   "12,10",
+                                                   "13,10",
+                                                   "14,10"
+                                               ],
+                                     "doors":  [
+                                                   "4,5",
+                                                   "8,4",
+                                                   "8,7"
+                                               ],
+                                     "objectives":  [
+                                                        "12,2"
+                                                    ],
+                                     "heroes":  [
+                                                    {
+                                                        "id":  "h1",
+                                                        "name":  "Chris",
+                                                        "x":  1,
+                                                        "y":  3,
+                                                        "hp":  12,
+                                                        "move":  4,
+                                                        "damage":  3,
+                                                        "range":  4,
+                                                        "art":  "chris.png",
+                                                        "role":  "assault",
+                                                        "loadout":  {
+                                                                        "pistol":  10,
+                                                                        "shotgun":  6,
+                                                                        "rifle":  4,
+                                                                        "grenade":  1,
+                                                                        "medkit":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "id":  "h2",
+                                                        "name":  "Jill",
+                                                        "x":  1,
+                                                        "y":  5,
+                                                        "hp":  10,
+                                                        "move":  5,
+                                                        "damage":  3,
+                                                        "range":  4,
+                                                        "art":  "jill.png",
+                                                        "role":  "scout",
+                                                        "loadout":  {
+                                                                        "pistol":  14,
+                                                                        "shotgun":  4,
+                                                                        "rifle":  4,
+                                                                        "grenade":  1,
+                                                                        "medkit":  2
+                                                                    }
+                                                    },
+                                                    {
+                                                        "id":  "h3",
+                                                        "name":  "Leon",
+                                                        "x":  2,
+                                                        "y":  8,
+                                                        "hp":  10,
+                                                        "move":  4,
+                                                        "damage":  4,
+                                                        "range":  5,
+                                                        "art":  "leon.png",
+                                                        "role":  "marksman",
+                                                        "loadout":  {
+                                                                        "pistol":  10,
+                                                                        "shotgun":  3,
+                                                                        "rifle":  8,
+                                                                        "grenade":  1,
+                                                                        "medkit":  1
+                                                                    }
+                                                    }
+                                                ],
+                                     "enemies":  [
+                                                     {
+                                                         "id":  "e1",
+                                                         "name":  "Runner",
+                                                         "x":  12,
+                                                         "y":  1,
+                                                         "hp":  6,
+                                                         "move":  5,
+                                                         "damage":  2,
+                                                         "range":  1,
+                                                         "art":  "cerberus.png",
+                                                         "role":  "runner"
+                                                     },
+                                                     {
+                                                         "id":  "e2",
+                                                         "name":  "Runner",
+                                                         "x":  13,
+                                                         "y":  6,
+                                                         "hp":  6,
+                                                         "move":  5,
+                                                         "damage":  2,
+                                                         "range":  1,
+                                                         "art":  "cerberus.png",
+                                                         "role":  "runner"
+                                                     },
+                                                     {
+                                                         "id":  "e3",
+                                                         "name":  "Spitter",
+                                                         "x":  11,
+                                                         "y":  8,
+                                                         "hp":  9,
+                                                         "move":  3,
+                                                         "damage":  2,
+                                                         "range":  3,
+                                                         "art":  "zombie.png",
+                                                         "role":  "spitter"
+                                                     }
+                                                 ]
+                                 }
+                     },
+                     {
+                         "id":  "valdelobos-night",
+                         "name":  "Valdelobos de noche",
+                         "briefing":  "Sobrevivir a una zona hostil y neutralizar al enemigo pesado.",
+                         "objective":  "boss",
+                         "turnLimit":  12,
+                         "rewardCredits":  380000,
+                         "rewardResearch":  5,
+                         "map":  {
+                                     "theme":  "village",
+                                     "width":  15,
+                                     "height":  11,
+                                     "cover":  [
+                                                   "2,2",
+                                                   "4,3",
+                                                   "6,2",
+                                                   "8,3",
+                                                   "11,2",
+                                                   "3,6",
+                                                   "6,6",
+                                                   "9,7",
+                                                   "12,8",
+                                                   "5,9"
+                                               ],
+                                     "obstacles":  [
+                                                       "5,1",
+                                                       "7,3",
+                                                       "10,3",
+                                                       "4,8",
+                                                       "8,8",
+                                                       "12,5"
+                                                   ],
+                                     "walls":  [
+                                                   "0,0",
+                                                   "1,0",
+                                                   "2,0",
+                                                   "3,0",
+                                                   "4,0",
+                                                   "5,0",
+                                                   "6,0",
+                                                   "7,0",
+                                                   "8,0",
+                                                   "9,0",
+                                                   "10,0",
+                                                   "11,0",
+                                                   "12,0",
+                                                   "13,0",
+                                                   "14,0",
+                                                   "0,1",
+                                                   "14,1",
+                                                   "0,2",
+                                                   "14,2",
+                                                   "0,3",
+                                                   "14,3",
+                                                   "0,4",
+                                                   "14,4",
+                                                   "0,5",
+                                                   "14,5",
+                                                   "0,6",
+                                                   "14,6",
+                                                   "0,7",
+                                                   "14,7",
+                                                   "0,8",
+                                                   "14,8",
+                                                   "0,9",
+                                                   "14,9",
+                                                   "0,10",
+                                                   "1,10",
+                                                   "2,10",
+                                                   "3,10",
+                                                   "4,10",
+                                                   "5,10",
+                                                   "6,10",
+                                                   "7,10",
+                                                   "8,10",
+                                                   "9,10",
+                                                   "10,10",
+                                                   "11,10",
+                                                   "12,10",
+                                                   "13,10",
+                                                   "14,10"
+                                               ],
+                                     "doors":  [
+                                                   "5,4",
+                                                   "9,3",
+                                                   "9,6"
+                                               ],
+                                     "heroes":  [
+                                                    {
+                                                        "id":  "h1",
+                                                        "name":  "Chris",
+                                                        "x":  1,
+                                                        "y":  1,
+                                                        "hp":  13,
+                                                        "move":  4,
+                                                        "damage":  3,
+                                                        "range":  4,
+                                                        "art":  "chris.png",
+                                                        "role":  "assault",
+                                                        "loadout":  {
+                                                                        "pistol":  12,
+                                                                        "shotgun":  7,
+                                                                        "rifle":  4,
+                                                                        "grenade":  2,
+                                                                        "medkit":  1
+                                                                    }
+                                                    },
+                                                    {
+                                                        "id":  "h2",
+                                                        "name":  "Jill",
+                                                        "x":  1,
+                                                        "y":  4,
+                                                        "hp":  11,
+                                                        "move":  5,
+                                                        "damage":  3,
+                                                        "range":  4,
+                                                        "art":  "jill.png",
+                                                        "role":  "scout",
+                                                        "loadout":  {
+                                                                        "pistol":  14,
+                                                                        "shotgun":  4,
+                                                                        "rifle":  5,
+                                                                        "grenade":  1,
+                                                                        "medkit":  2
+                                                                    }
+                                                    },
+                                                    {
+                                                        "id":  "h3",
+                                                        "name":  "Leon",
+                                                        "x":  2,
+                                                        "y":  7,
+                                                        "hp":  11,
+                                                        "move":  4,
+                                                        "damage":  4,
+                                                        "range":  5,
+                                                        "art":  "leon.png",
+                                                        "role":  "marksman",
+                                                        "loadout":  {
+                                                                        "pistol":  10,
+                                                                        "shotgun":  3,
+                                                                        "rifle":  10,
+                                                                        "grenade":  1,
+                                                                        "medkit":  1
+                                                                    }
+                                                    }
+                                                ],
+                                     "enemies":  [
+                                                     {
+                                                         "id":  "e1",
+                                                         "name":  "Brute",
+                                                         "x":  12,
+                                                         "y":  2,
+                                                         "hp":  20,
+                                                         "move":  2,
+                                                         "damage":  4,
+                                                         "range":  1,
+                                                         "art":  "tyrant.png",
+                                                         "role":  "boss"
+                                                     },
+                                                     {
+                                                         "id":  "e2",
+                                                         "name":  "Shambler",
+                                                         "x":  11,
+                                                         "y":  6,
+                                                         "hp":  8,
+                                                         "move":  3,
+                                                         "damage":  2,
+                                                         "range":  1,
+                                                         "art":  "zombie.png",
+                                                         "role":  "slow"
+                                                     },
+                                                     {
+                                                         "id":  "e3",
+                                                         "name":  "Crawler",
+                                                         "x":  13,
+                                                         "y":  8,
+                                                         "hp":  11,
+                                                         "move":  4,
+                                                         "damage":  3,
+                                                         "range":  1,
+                                                         "art":  "licker.png",
+                                                         "role":  "ambusher"
+                                                     }
+                                                 ]
+                                 }
+                     }
+                 ]
 }

@@ -5,11 +5,11 @@ const SAVE_PATH := "user://campaign_save.json"
 const UNIT_VIEW := preload("res://scenes/UnitView.tscn")
 const PROP_VIEW := preload("res://scenes/PropView.tscn")
 const EFFECT_BURST := preload("res://scenes/EffectBurst.tscn")
-const TILE_W := 76.0
-const TILE_H := 40.0
+const TILE_W := 60.0
+const TILE_H := 32.0
 const BOARD_W := 15
 const BOARD_H := 11
-const ISO_ORIGIN := Vector2(500, 24)
+const ISO_ORIGIN := Vector2(420, 70)
 const COLORS := {
 	"bg": Color("#070909"),
 	"bg_2": Color("#101412"),
@@ -454,6 +454,7 @@ func draw_tile(x: int, y: int) -> void:
 	tile_sprite.texture = load(tile_art_path(x, y))
 	tile_sprite.scale = Vector2(0.5, 0.5)
 	holder.add_child(tile_sprite)
+	draw_theme_floor_details(holder, x, y)
 	var highlight := Line2D.new()
 	highlight.points = PackedVector2Array([Vector2(0, -TILE_H / 2.0), Vector2(TILE_W / 2.0, 0), Vector2(0, TILE_H / 2.0), Vector2(-TILE_W / 2.0, 0), Vector2(0, -TILE_H / 2.0)])
 	highlight.width = 1.4
@@ -474,7 +475,7 @@ func draw_tile(x: int, y: int) -> void:
 func draw_board_hit_layer() -> void:
 	var hit_layer := Control.new()
 	hit_layer.position = Vector2(0, 0)
-	hit_layer.size = Vector2(1080, 660)
+	hit_layer.size = Vector2(900, 600)
 	hit_layer.mouse_filter = Control.MOUSE_FILTER_STOP
 	hit_layer.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -494,7 +495,7 @@ func screen_to_tile(pos: Vector2) -> Vector2:
 			if d < best_dist:
 				best_dist = d
 				best = Vector2(x, y)
-	if best_dist <= 1800.0:
+	if best_dist <= 1250.0:
 		return best
 	return Vector2(-1, -1)
 
@@ -513,10 +514,51 @@ func tile_art_path(x: int, y: int) -> String:
 			return "res://assets/painted/tiles/move_tile.png"
 	var theme := str(active_map.get("theme", "lab"))
 	if theme == "street":
+		if x < 3 or x > 11:
+			return "res://assets/painted/tiles/floor_mansion.png"
 		return "res://assets/painted/tiles/floor_street.png"
 	if theme == "village":
-		return "res://assets/painted/tiles/floor_mansion.png" if (x + y) % 3 == 0 else "res://assets/painted/tiles/floor_street.png"
+		return "res://assets/painted/tiles/floor_mansion.png"
 	return "res://assets/painted/tiles/floor_lab.png" if (x + y) % 2 == 0 else "res://assets/painted/tiles/floor_lab_alt.png"
+
+func draw_theme_floor_details(holder: Node2D, x: int, y: int) -> void:
+	var theme := str(active_map.get("theme", "lab"))
+	if theme == "street":
+		if y == 5 or y == 6:
+			draw_floor_line(holder, Color("#d0bf67"), 2.0, Vector2(-18, -7), Vector2(18, 7))
+		if (x + y) % 7 == 0:
+			draw_floor_stain(holder, Color("#6e1612"), Vector2(4, -2))
+		if x < 3 or x > 11:
+			draw_floor_line(holder, Color("#4a3a2c"), 1.5, Vector2(-24, 0), Vector2(24, 0))
+	elif theme == "village":
+		if x <= 5 and y <= 5:
+			draw_floor_line(holder, Color("#6b472c"), 1.5, Vector2(-28, -3), Vector2(24, 10))
+			draw_floor_line(holder, Color("#2a1b12"), 1.0, Vector2(-18, 8), Vector2(28, -6))
+		else:
+			draw_floor_stain(holder, Color("#26351f"), Vector2(-4, 1))
+	else:
+		if (x == 7 or x == 8) and y > 1 and y < 9:
+			for offset in [-18, -6, 6, 18]:
+				draw_floor_line(holder, Color("#6e7c7a"), 1.0, Vector2(offset, -8), Vector2(offset + 12, 8))
+		if y == 2 or y == 8:
+			draw_floor_line(holder, Color("#c1a83f"), 2.0, Vector2(-20, 8), Vector2(4, -6))
+			draw_floor_line(holder, Color("#c1a83f"), 2.0, Vector2(4, 8), Vector2(28, -6))
+
+func draw_floor_line(holder: Node2D, color: Color, width: float, from: Vector2, to: Vector2) -> void:
+	var line := Line2D.new()
+	line.points = PackedVector2Array([from, to])
+	line.width = width
+	line.default_color = Color(color, 0.82)
+	line.z_index = 2
+	holder.add_child(line)
+
+func draw_floor_stain(holder: Node2D, color: Color, offset: Vector2) -> void:
+	var stain := Polygon2D.new()
+	stain.position = offset
+	stain.polygon = PackedVector2Array([Vector2(-10, -2), Vector2(-2, -6), Vector2(12, -3), Vector2(10, 4), Vector2(-5, 6)])
+	stain.color = Color(color, 0.72)
+	stain.z_index = 2
+	holder.add_child(stain)
 
 func diamond_points(width: float, height: float) -> PackedVector2Array:
 	return PackedVector2Array([Vector2(0, -height / 2.0), Vector2(width / 2.0, 0), Vector2(0, height / 2.0), Vector2(-width / 2.0, 0)])
