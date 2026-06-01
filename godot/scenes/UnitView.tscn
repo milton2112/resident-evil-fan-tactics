@@ -12,8 +12,7 @@ color = Color(0, 0, 0, 0.34)
 polygon = PackedVector2Array(0, -14, 27, 0, 0, 14, -27, 0)
 
 [node name="Sprite" type="Sprite2D" parent="."]
-position = Vector2(0, -18)
-scale = Vector2(0.62, 0.62)
+position = Vector2(0, -54)
 
 [node name="HpBg" type="ColorRect" parent="."]
 offset_left = -22.0

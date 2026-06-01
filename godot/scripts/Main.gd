@@ -10,15 +10,6 @@ const TILE_H := 40.0
 const BOARD_W := 12
 const BOARD_H := 9
 const ISO_ORIGIN := Vector2(430, 64)
-const UNIT_SCALES := {
-	"chris.png": 0.62,
-	"jill.png": 0.62,
-	"leon.png": 0.62,
-	"zombie.png": 0.62,
-	"cerberus.png": 0.66,
-	"licker.png": 0.58,
-	"tyrant.png": 0.68
-}
 const COLORS := {
 	"bg": Color("#101415"),
 	"panel": Color("#171d1f"),
@@ -471,18 +462,16 @@ func draw_unit(unit: Dictionary, index: int) -> void:
 	battle_grid.add_child(holder)
 	var accent: Color = COLORS.hero if unit.side == "hero" else COLORS.enemy
 	var unit_view = UNIT_VIEW.instantiate()
-	var sprite_scale = UNIT_SCALES.get(unit.art, 0.62)
-	unit_view.scale = Vector2(sprite_scale / 0.62, sprite_scale / 0.62)
 	holder.add_child(unit_view)
 	unit_view.setup(unit)
 	unit_view.set_selected(index == selected_unit)
 	unit_view.get_node("HpBar").color = accent
 	var name_label := Label.new()
 	name_label.text = unit.name
-	name_label.position = Vector2(-36, 43)
-	name_label.size = Vector2(72, 18)
+	name_label.position = Vector2(-40, 49)
+	name_label.size = Vector2(80, 18)
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.add_theme_font_size_override("font_size", 10)
+	name_label.add_theme_font_size_override("font_size", 9)
 	name_label.add_theme_color_override("font_color", COLORS.text)
 	holder.add_child(name_label)
 	if index == selected_unit:
