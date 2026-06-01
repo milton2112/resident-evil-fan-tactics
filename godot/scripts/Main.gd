@@ -871,9 +871,10 @@ func render_selected_unit_panel() -> void:
 		return
 	var unit = units[selected_unit]
 	var status_text := "Normal" if unit.status.is_empty() else ", ".join(unit.status)
+	var nearby := nearby_interaction_text()
 	var label := Label.new()
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.text = "%s  [%s]\nHP %s/%s  //  AP %s/%s  //  %s\nMUNICION  P:%s  E:%s  R:%s  G:%s  B:%s" % [
+	label.text = "%s  [%s]\nHP %s/%s  //  AP %s/%s  //  %s\nMUNICION  P:%s  E:%s  R:%s  G:%s  B:%s%s" % [
 		str(unit.name).to_upper(),
 		str(unit.role).to_upper(),
 		unit.hp,
@@ -885,7 +886,8 @@ func render_selected_unit_panel() -> void:
 		ammo_count(unit, "shotgun"),
 		ammo_count(unit, "rifle"),
 		ammo_count(unit, "grenade"),
-		ammo_count(unit, "medkit")
+		ammo_count(unit, "medkit"),
+		"\nCERCA: %s" % nearby if nearby != "" else ""
 	]
 	label.add_theme_color_override("font_color", COLORS.text)
 	unit_panel.add_child(label)
@@ -1008,6 +1010,12 @@ func render_result_panel() -> void:
 
 func get_tile_color(x: int, y: int) -> Color:
 	var key := "%s,%s" % [x, y]
+	if objective_tiles.has(key):
+		return Color(0.50, 0.55, 0.26, 1.0)
+	if supply_tiles.has(key) and not used_supply_tiles.has(key):
+		return Color(0.38, 0.34, 0.18, 1.0)
+	if door_tiles.has(key):
+		return Color(0.16, 0.35, 0.25, 1.0) if open_door_tiles.has(key) else Color(0.40, 0.16, 0.14, 1.0)
 	if cover_tiles.has(key):
 		return Color(0.35, 0.42, 0.24, 1.0)
 	if selected_unit >= 0 and selected_unit < units.size() and units[selected_unit].side == "hero":
@@ -1446,6 +1454,17 @@ func selected_unit_near_objective() -> bool:
 		if parts.size() == 2 and distance_xy(unit.x, unit.y, int(parts[0]), int(parts[1])) <= 1:
 			return true
 	return false
+
+func nearby_interaction_text() -> String:
+	var labels := []
+	var door_key := nearest_door_key()
+	if door_key != "":
+		labels.append("puerta abierta" if open_door_tiles.has(door_key) else "puerta cerrada")
+	if selected_unit_near_fresh_supply():
+		labels.append("suministros")
+	if selected_unit_near_objective() and not objective_activated:
+		labels.append("objetivo")
+	return " / ".join(labels)
 
 func selected_unit_near_fresh_supply() -> bool:
 	return nearest_fresh_supply_key() != ""
